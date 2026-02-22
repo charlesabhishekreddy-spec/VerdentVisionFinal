@@ -1,0 +1,19 @@
+{
+  "entity": "OutbreakReport",
+  "purpose": "Community pest/disease outbreak reporting",
+  "fields": {
+    "pestOrDiseaseName": "string",
+    "severityLevel": "low|medium|high|critical",
+    "affectedCrops": ["string"],
+    "location": {
+      "name": "string",
+      "latitude": "number",
+      "longitude": "number"
+    },
+    "description": "string",
+    "imageUrl": "string",
+    "reporterName": "string",
+    "verificationStatus": "unverified|pending|verified",
+    "verificationCount": "number"
+  }
+}

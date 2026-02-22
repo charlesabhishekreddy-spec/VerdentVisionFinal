@@ -1,0 +1,12 @@
+{
+  "entity": "ForumComment",
+  "purpose": "Comments on forum posts",
+  "fields": {
+    "postId": "string",
+    "content": "string",
+    "authorName": "string",
+    "likesCount": "number",
+    "isSolution": "boolean",
+    "images": ["string"]
+  }
+}

@@ -2,15 +2,22 @@ import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter, Routes, Route } from "react-router-dom"
 import "./globals.css"
-import Diagnose from "./pages/Diagnose"
-import Schedule from "./pages/Schedule"
 
 import Layout from "./Layout"
 import Home from "./pages/Home"
-
-function Placeholder({ title }) {
-  return <h1 className="text-2xl font-bold">{title}</h1>
-}
+import Diagnose from "./pages/Diagnose"
+import Schedule from "./pages/Schedule"
+import Community from "./pages/Community"
+import Profile from "./pages/Profile"
+import Weather from "./pages/Weather"
+import Predictions from "./pages/Predictions"
+import Admin from "./pages/Admin"
+import Planner from "./pages/Planner"
+import Chat from "./pages/Chat"
+import Treatments from "./pages/Treatments"
+import PestIdentifier from "./pages/PestIdentifier"
+import Dashboard from "./pages/Dashboard"
+import PageNotFound from "./lib/PageNotFound"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
@@ -19,11 +26,20 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/diagnose" element={<Diagnose />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/schedule" element={<Schedule />} />
-          <Route path="/community" element={<Placeholder title="Community Page" />} />
-          <Route path="/profile" element={<Placeholder title="Profile Page" />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/weather" element={<Weather />} />
+          <Route path="/predictions" element={<Predictions />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/planner" element={<Planner />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/treatments" element={<Treatments />} />
+          <Route path="/pest-identifier" element={<PestIdentifier />} />
+          <Route path="*" element={<PageNotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>
-  </React.StrictMode>
+  </React.StrictMode>,
 )

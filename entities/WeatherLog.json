@@ -1,0 +1,15 @@
+{
+  "entity": "WeatherLog",
+  "purpose": "Manual weather data tracking",
+  "fields": {
+    "date": "date",
+    "location": "string",
+    "temperatureHigh": "number",
+    "temperatureLow": "number",
+    "humidity": "number",
+    "rainfall": "number",
+    "windSpeed": "number",
+    "conditions": "sunny|cloudy|rainy|storm|windy|other",
+    "userNotes": "string"
+  }
+}

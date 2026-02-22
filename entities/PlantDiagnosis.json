@@ -1,0 +1,16 @@
+{
+  "entity": "PlantDiagnosis",
+  "purpose": "Store AI-powered plant disease diagnosis records",
+  "fields": {
+    "plantName": "string",
+    "diseaseName": "string",
+    "severity": "low|medium|high|critical",
+    "confidenceScore": "number",
+    "symptoms": ["string"],
+    "imageUrl": "string",
+    "treatmentApplied": "string",
+    "location": "string",
+    "status": "diagnosed|treating|recovered|monitoring",
+    "userNotes": "string"
+  }
+}

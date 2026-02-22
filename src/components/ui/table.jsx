@@ -1,0 +1,1 @@
+export const Table=(p)=><table {...p}/>;export const TableHeader=(p)=><thead {...p}/>;export const TableBody=(p)=><tbody {...p}/>;export const TableRow=(p)=><tr {...p}/>;export const TableCell=(p)=><td {...p}/>;

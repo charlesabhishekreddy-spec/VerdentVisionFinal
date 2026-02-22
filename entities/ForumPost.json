@@ -1,0 +1,15 @@
+{
+  "entity": "ForumPost",
+  "purpose": "Community forum posts",
+  "fields": {
+    "title": "string",
+    "content": "string",
+    "category": "string",
+    "images": ["string"],
+    "likesCount": "number",
+    "commentsCount": "number",
+    "tags": ["string"],
+    "authorName": "string",
+    "solved": "boolean"
+  }
+}

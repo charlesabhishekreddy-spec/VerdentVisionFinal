@@ -1,0 +1,23 @@
+{
+  "entity": "Task",
+  "purpose": "Farm task management with scheduling and assignments",
+  "fields": {
+    "title": "string",
+    "description": "string",
+    "taskType": "watering|fertilizing|pest_control|harvesting|inspection|other",
+    "dueDate": "date",
+    "priority": "low|medium|high",
+    "status": "pending|in_progress|completed|blocked",
+    "cropName": "string",
+    "location": "string",
+    "weatherDependent": "boolean",
+    "recurring": {
+      "enabled": "boolean",
+      "pattern": "daily|weekly|biweekly|monthly",
+      "endDate": "date"
+    },
+    "assignedUsers": ["string"],
+    "dependencies": ["string"],
+    "completionNotes": "string"
+  }
+}

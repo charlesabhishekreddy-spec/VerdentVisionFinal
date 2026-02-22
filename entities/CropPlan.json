@@ -1,0 +1,19 @@
+{
+  "entity": "CropPlan",
+  "purpose": "Crop planning and timeline management",
+  "fields": {
+    "cropName": "string",
+    "variety": "string",
+    "plantingDate": "date",
+    "expectedHarvestDate": "date",
+    "growthStage": "string",
+    "location": "string",
+    "areaSize": "string",
+    "timeline": [{ "week": "number", "milestone": "string" }],
+    "soilRequirements": "string",
+    "waterSchedule": "string",
+    "fertilizerPlan": "string",
+    "notes": "string",
+    "status": "planned|active|completed|archived"
+  }
+}

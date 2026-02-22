@@ -1,0 +1,18 @@
+{
+  "entity": "PestPrediction",
+  "purpose": "AI-generated pest/disease outbreak predictions",
+  "fields": {
+    "pestOrDiseaseName": "string",
+    "riskLevel": "low|medium|high|critical",
+    "probabilityPercent": "number",
+    "affectedCrops": ["string"],
+    "predictionDate": "date",
+    "expectedTimeframe": "string",
+    "weatherFactors": ["string"],
+    "preventativeMeasures": ["string"],
+    "location": "string",
+    "isActive": "boolean",
+    "dismissedByUser": "boolean",
+    "historicalReferences": ["string"]
+  }
+}

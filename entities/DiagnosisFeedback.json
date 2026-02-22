@@ -1,0 +1,13 @@
+{
+  "entity": "DiagnosisFeedback",
+  "purpose": "User feedback on diagnosis accuracy for AI improvement",
+  "fields": {
+    "diagnosisId": "string",
+    "accuracyRating": "1|2|3|4|5",
+    "isCorrect": "boolean",
+    "actualPlantName": "string",
+    "actualDiseaseName": "string",
+    "feedbackNotes": "string",
+    "diagnosisSnapshot": "object"
+  }
+}

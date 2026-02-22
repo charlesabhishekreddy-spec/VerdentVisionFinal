@@ -1,0 +1,16 @@
+{
+  "entity": "Treatment",
+  "purpose": "Disease treatment recommendations library",
+  "fields": {
+    "diseaseName": "string",
+    "treatmentName": "string",
+    "treatmentType": "organic|chemical|integrated|cultural",
+    "description": "string",
+    "ingredients": [{ "name": "string", "quantity": "string" }],
+    "applicationMethod": "string",
+    "frequency": "string",
+    "safetyPrecautions": ["string"],
+    "effectivenessRating": "number",
+    "favorite": "boolean"
+  }
+}

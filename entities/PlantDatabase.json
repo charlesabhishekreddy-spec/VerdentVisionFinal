@@ -1,0 +1,24 @@
+{
+  "entity": "PlantDatabase",
+  "purpose": "Comprehensive plant species reference database",
+  "fields": {
+    "commonName": "string",
+    "scientificName": "string",
+    "characteristics": {
+      "growthHabit": "string",
+      "heightRange": "string",
+      "leafType": "string"
+    },
+    "growingRequirements": {
+      "sunlight": "string",
+      "water": "string",
+      "soil": "string",
+      "nutrients": ["string"]
+    },
+    "climateZones": ["string"],
+    "pestsAndDiseases": ["string"],
+    "companionPlants": ["string"],
+    "propagationMethods": ["string"],
+    "harvestTimeline": "string"
+  }
+}
