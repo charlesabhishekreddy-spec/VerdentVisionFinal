@@ -1,11 +1,10 @@
-/* eslint-disable no-unused-vars */
-import React, { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shield, Users, UserPlus, Activity } from "lucide-react";
-import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Shield, UserPlus, Users, TrendingUp, Activity } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import UserList from "../components/admin/UserList.jsx";
 import InviteUserForm from "../components/admin/InviteUserForm.jsx";
 import AdminStats from "../components/admin/AdminStats.jsx";
@@ -14,54 +13,39 @@ export default function Admin() {
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [error, setError] = useState(null);
-
   const queryClient = useQueryClient();
 
-  // Fetch all users
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ["all-users"],
+    queryKey: ['all-users'],
     queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/users");
-      if (!res.ok) throw new Error("Failed to fetch users");
-      const usersData = await res.json();
-      // Set first user as current user for demo (replace with auth in real app)
-      setCurrentUser(usersData[0] || null);
-      if (usersData[0]?.role !== "admin") {
-        setError("Access denied. Admin privileges required.");
+      const user = await base44.auth.me();
+      setCurrentUser(user);
+      
+      if (user.role !== 'admin') {
+        setError('Access denied. Admin privileges required.');
+        return [];
       }
-      return usersData;
-    },
+      
+      return await base44.entities.User.list('-created_date', 100);
+    }
   });
 
-  // Fetch other stats (diagnoses, tasks, posts)
   const { data: allDiagnoses = [] } = useQuery({
-    queryKey: ["all-diagnoses-admin"],
-    queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/diagnoses");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: currentUser?.role === "admin",
+    queryKey: ['all-diagnoses-admin'],
+    queryFn: () => base44.entities.PlantDiagnosis.list('-created_date', 100),
+    enabled: currentUser?.role === 'admin'
   });
 
   const { data: allTasks = [] } = useQuery({
-    queryKey: ["all-tasks-admin"],
-    queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/tasks");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: currentUser?.role === "admin",
+    queryKey: ['all-tasks-admin'],
+    queryFn: () => base44.entities.Task.list('-created_date', 100),
+    enabled: currentUser?.role === 'admin'
   });
 
   const { data: allPosts = [] } = useQuery({
-    queryKey: ["all-posts-admin"],
-    queryFn: async () => {
-      const res = await fetch("http://localhost:5000/api/posts");
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: currentUser?.role === "admin",
+    queryKey: ['all-posts-admin'],
+    queryFn: () => base44.entities.ForumPost.list('-created_date', 100),
+    enabled: currentUser?.role === 'admin'
   });
 
   if (error) {
@@ -105,9 +89,16 @@ export default function Admin() {
         </Button>
       </div>
 
-      {showInviteForm && <InviteUserForm onClose={() => setShowInviteForm(false)} />}
+      {showInviteForm && (
+        <InviteUserForm onClose={() => setShowInviteForm(false)} />
+      )}
 
-      <AdminStats users={users} diagnoses={allDiagnoses} tasks={allTasks} posts={allPosts} />
+      <AdminStats 
+        users={users} 
+        diagnoses={allDiagnoses} 
+        tasks={allTasks} 
+        posts={allPosts}
+      />
 
       <Card className="border-none shadow-lg">
         <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">

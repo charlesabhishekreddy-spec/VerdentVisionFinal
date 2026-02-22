@@ -1,42 +1,36 @@
 import React, { useState } from "react";
+import { base44 } from "@/api/base44Client";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectItem, SelectTrigger, SelectValue, SelectContent } from "@/components/ui/select";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2, Mail, CheckCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function InviteUserForm({ onClose }) {
-  const [full_name, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] = useState("user");
   const [success, setSuccess] = useState(false);
-
   const queryClient = useQueryClient();
 
   const inviteMutation = useMutation({
-    mutationFn: async ({ full_name, email, password, role }) => {
-      const res = await fetch("http://localhost:5000/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ full_name, email, password, role }),
-      });
-      if (!res.ok) throw new Error("Failed to invite user");
-      return res.json();
+    mutationFn: async () => {
+      await base44.users.inviteUser(email, role);
     },
     onSuccess: () => {
       setSuccess(true);
-      queryClient.invalidateQueries(["all-users"]); // refresh user list
-      setTimeout(() => onClose(), 2000);
-    },
+      queryClient.invalidateQueries(['all-users']);
+      setTimeout(() => {
+        onClose();
+      }, 2000);
+    }
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    inviteMutation.mutate({ full_name, email, password, role });
+    inviteMutation.mutate();
   };
 
   return (
@@ -57,26 +51,13 @@ export default function InviteUserForm({ onClose }) {
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
-              Invitation sent successfully!
+              Invitation sent successfully! User will receive an email with login instructions.
             </AlertDescription>
           </Alert>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="full_name">Full Name *</Label>
-              <Input
-                id="full_name"
-                type="text"
-                value={full_name}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="John Doe"
-                required
-                disabled={inviteMutation.isPending}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email">Email Address *</Label>
               <Input
                 id="email"
                 type="email"
@@ -89,42 +70,51 @@ export default function InviteUserForm({ onClose }) {
             </div>
 
             <div>
-              <Label htmlFor="password">Password *</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="password123"
-                required
-                disabled={inviteMutation.isPending}
-              />
-            </div>
-
-            <div>
               <Label htmlFor="role">User Role *</Label>
               <Select value={role} onValueChange={setRole} disabled={inviteMutation.isPending}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Regular User</SelectItem>
-                  <SelectItem value="admin">Administrator</SelectItem>
+                  <SelectItem value="user">
+                    <div>
+                      <div className="font-medium">Regular User</div>
+                      <div className="text-xs text-gray-500">Can access all farming features</div>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="admin">
+                    <div>
+                      <div className="font-medium">Administrator</div>
+                      <div className="text-xs text-gray-500">Full access including user management</div>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             {inviteMutation.isError && (
               <Alert variant="destructive">
-                <AlertDescription>Failed to send invitation. Try again.</AlertDescription>
+                <AlertDescription>
+                  Failed to send invitation. Please try again.
+                </AlertDescription>
               </Alert>
             )}
 
             <div className="flex gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={onClose} disabled={inviteMutation.isPending} className="flex-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={inviteMutation.isPending}
+                className="flex-1"
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={inviteMutation.isPending} className="flex-1 bg-blue-600 hover:bg-blue-700">
+              <Button
+                type="submit"
+                disabled={inviteMutation.isPending}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+              >
                 {inviteMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />

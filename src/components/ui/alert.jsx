@@ -1,26 +1,47 @@
-// src/components/ui/alert.jsx
-import React from "react";
+import * as React from "react"
+import { cva } from "class-variance-authority";
 
-export function Alert({ variant = "default", children }) {
-  const baseClasses = "border-l-4 p-4 rounded";
-  const variants = {
-    default: "border-gray-300 bg-gray-50 text-gray-800",
-    destructive: "border-red-500 bg-red-50 text-red-800",
-    success: "border-green-500 bg-green-50 text-green-800",
-    warning: "border-yellow-500 bg-yellow-50 text-yellow-800"
-  };
-  
-  return (
-    <div className={`${baseClasses} ${variants[variant]}`}>
-      {children}
-    </div>
-  );
-}
+import { cn } from "@/lib/utils"
 
-export function AlertDescription({ children }) {
-  return <p className="text-sm">{children}</p>;
-}
+const alertVariants = cva(
+  "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
+  {
+    variants: {
+      variant: {
+        default: "bg-background text-foreground",
+        destructive:
+          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
 
-export function AlertTitle({ children }) {
-  return <strong className="block font-medium">{children}</strong>;
-}
+const Alert = React.forwardRef(({ className, variant, ...props }, ref) => (
+  <div
+    ref={ref}
+    role="alert"
+    className={cn(alertVariants({ variant }), className)}
+    {...props} />
+))
+Alert.displayName = "Alert"
+
+const AlertTitle = React.forwardRef(({ className, ...props }, ref) => (
+  <h5
+    ref={ref}
+    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+    {...props} />
+))
+AlertTitle.displayName = "AlertTitle"
+
+const AlertDescription = React.forwardRef(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("text-sm [&_p]:leading-relaxed", className)}
+    {...props} />
+))
+AlertDescription.displayName = "AlertDescription"
+
+export { Alert, AlertTitle, AlertDescription }
