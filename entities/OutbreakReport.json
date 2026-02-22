@@ -1,19 +1,96 @@
 {
-  "entity": "OutbreakReport",
-  "purpose": "Community pest/disease outbreak reporting",
-  "fields": {
-    "pestOrDiseaseName": "string",
-    "severityLevel": "low|medium|high|critical",
-    "affectedCrops": ["string"],
-    "location": {
-      "name": "string",
-      "latitude": "number",
-      "longitude": "number"
+  "name": "OutbreakReport",
+  "type": "object",
+  "properties": {
+    "pest_or_disease": {
+      "type": "string",
+      "description": "Name of pest or disease observed"
     },
-    "description": "string",
-    "imageUrl": "string",
-    "reporterName": "string",
-    "verificationStatus": "unverified|pending|verified",
-    "verificationCount": "number"
+    "severity": {
+      "type": "string",
+      "enum": [
+        "mild",
+        "moderate",
+        "severe",
+        "critical"
+      ],
+      "description": "Severity of outbreak"
+    },
+    "affected_crops": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Crops affected"
+    },
+    "location_name": {
+      "type": "string",
+      "description": "Location name"
+    },
+    "latitude": {
+      "type": "number",
+      "description": "GPS latitude"
+    },
+    "longitude": {
+      "type": "number",
+      "description": "GPS longitude"
+    },
+    "description": {
+      "type": "string",
+      "description": "User description of outbreak"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Photo evidence"
+    },
+    "reporter_name": {
+      "type": "string",
+      "description": "Name of reporter"
+    },
+    "verified": {
+      "type": "boolean",
+      "default": false,
+      "description": "Verified by other users"
+    },
+    "verification_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of verifications"
+    }
+  },
+  "required": [
+    "pest_or_disease",
+    "severity",
+    "location_name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
   }
 }

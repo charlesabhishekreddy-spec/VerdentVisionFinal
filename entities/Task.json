@@ -1,23 +1,164 @@
 {
-  "entity": "Task",
-  "purpose": "Farm task management with scheduling and assignments",
-  "fields": {
-    "title": "string",
-    "description": "string",
-    "taskType": "watering|fertilizing|pest_control|harvesting|inspection|other",
-    "dueDate": "date",
-    "priority": "low|medium|high",
-    "status": "pending|in_progress|completed|blocked",
-    "cropName": "string",
-    "location": "string",
-    "weatherDependent": "boolean",
-    "recurring": {
-      "enabled": "boolean",
-      "pattern": "daily|weekly|biweekly|monthly",
-      "endDate": "date"
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task name"
     },
-    "assignedUsers": ["string"],
-    "dependencies": ["string"],
-    "completionNotes": "string"
+    "description": {
+      "type": "string",
+      "description": "Task details"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "watering",
+        "fertilizing",
+        "pest_control",
+        "pruning",
+        "harvesting",
+        "planting",
+        "soil_prep",
+        "monitoring",
+        "other"
+      ],
+      "description": "Type of farming task"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When task should be completed"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "urgent"
+      ],
+      "default": "medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "skipped",
+        "blocked"
+      ],
+      "default": "pending"
+    },
+    "crop_name": {
+      "type": "string",
+      "description": "Related crop or plant"
+    },
+    "location": {
+      "type": "string",
+      "description": "Field or area location"
+    },
+    "weather_dependent": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task depends on weather"
+    },
+    "completion_notes": {
+      "type": "string",
+      "description": "Notes after completing the task"
+    },
+    "is_recurring": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task repeats"
+    },
+    "recurrence_pattern": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly"
+      ],
+      "description": "How often task repeats"
+    },
+    "recurrence_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When recurrence stops"
+    },
+    "auto_generated": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether task was AI-generated"
+    },
+    "suggestion_reason": {
+      "type": "string",
+      "description": "Why AI suggested this task"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "Email of user assigned to this task"
+    },
+    "depends_on": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IDs of tasks that must be completed before this task"
+    }
+  },
+  "required": [
+    "title",
+    "task_type",
+    "due_date"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "assigned_to": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "assigned_to": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
   }
 }

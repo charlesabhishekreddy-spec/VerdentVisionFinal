@@ -1,15 +1,98 @@
 {
-  "entity": "ForumPost",
-  "purpose": "Community forum posts",
-  "fields": {
-    "title": "string",
-    "content": "string",
-    "category": "string",
-    "images": ["string"],
-    "likesCount": "number",
-    "commentsCount": "number",
-    "tags": ["string"],
-    "authorName": "string",
-    "solved": "boolean"
+  "name": "ForumPost",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Post title"
+    },
+    "content": {
+      "type": "string",
+      "description": "Post content"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "pest_control",
+        "disease_management",
+        "organic_farming",
+        "irrigation",
+        "soil_health",
+        "crop_rotation",
+        "fertilizers",
+        "seeds",
+        "equipment",
+        "general"
+      ],
+      "description": "Post category"
+    },
+    "images": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Image URLs attached to post"
+    },
+    "likes_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of likes"
+    },
+    "comments_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Number of comments"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Post tags for filtering"
+    },
+    "author_name": {
+      "type": "string",
+      "description": "Name of the post author"
+    },
+    "is_solved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the question was solved"
+    }
+  },
+  "required": [
+    "title",
+    "content",
+    "category"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": true,
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
   }
 }

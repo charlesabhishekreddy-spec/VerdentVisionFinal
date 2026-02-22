@@ -1,16 +1,105 @@
 {
-  "entity": "PlantDiagnosis",
-  "purpose": "Store AI-powered plant disease diagnosis records",
-  "fields": {
-    "plantName": "string",
-    "diseaseName": "string",
-    "severity": "low|medium|high|critical",
-    "confidenceScore": "number",
-    "symptoms": ["string"],
-    "imageUrl": "string",
-    "treatmentApplied": "string",
-    "location": "string",
-    "status": "diagnosed|treating|recovered|monitoring",
-    "userNotes": "string"
+  "name": "PlantDiagnosis",
+  "type": "object",
+  "properties": {
+    "plant_name": {
+      "type": "string",
+      "description": "Identified plant name"
+    },
+    "disease_name": {
+      "type": "string",
+      "description": "Detected disease name"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "description": "Disease severity level"
+    },
+    "confidence_score": {
+      "type": "number",
+      "description": "AI confidence percentage"
+    },
+    "image_url": {
+      "type": "string",
+      "description": "Plant image URL"
+    },
+    "symptoms": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of symptoms detected"
+    },
+    "treatment_applied": {
+      "type": "string",
+      "description": "Treatment that was applied"
+    },
+    "notes": {
+      "type": "string",
+      "description": "User notes about the diagnosis"
+    },
+    "location": {
+      "type": "string",
+      "description": "Farm location or field name"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "diagnosed",
+        "treating",
+        "recovered",
+        "monitoring"
+      ],
+      "default": "diagnosed"
+    }
+  },
+  "required": [
+    "plant_name"
+  ],
+  "rls": {
+    "create": {
+      "created_by": "{{user.email}}"
+    },
+    "read": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
   }
 }
