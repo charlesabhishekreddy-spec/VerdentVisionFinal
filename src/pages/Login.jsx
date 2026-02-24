@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Leaf, Mail } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { GraduationCap, Building2, UserRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/AuthContext';
 
 const parseJwt = (token) => {
@@ -13,15 +14,17 @@ const parseJwt = (token) => {
 };
 
 export default function Login() {
-  const { signInWithGoogle, isAuthenticated } = useAuth();
+  const { signInWithGoogle, signInWithEmail, isAuthenticated } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [error, setError] = useState('');
+  const [accountType, setAccountType] = useState('attendee');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/Home');
-    }
+    if (isAuthenticated) navigate('/Home');
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
@@ -36,46 +39,65 @@ export default function Login() {
           setError('Google login did not return a valid email.');
           return;
         }
-        await signInWithGoogle({ name: payload.name, email: payload.email, picture: payload.picture });
+        await signInWithGoogle({ name: payload.name, email: payload.email, picture: payload.picture, accountType });
         navigate(decodeURIComponent(params.get('next') || '/Home'));
       },
     });
 
     const node = document.getElementById('google-signin-btn');
-    if (node) {
-      window.google.accounts.id.renderButton(node, { theme: 'outline', size: 'large', width: 280 });
-    }
-  }, [navigate, params, signInWithGoogle]);
+    if (node) window.google.accounts.id.renderButton(node, { theme: 'outline', size: 'large', width: 360 });
+  }, [accountType, navigate, params, signInWithGoogle]);
 
-  const fallbackGoogleSignIn = async () => {
-    const email = window.prompt('Enter your Gmail address');
-    if (!email || !email.includes('@')) {
-      setError('Please enter a valid email.');
-      return;
+  const onEmailSignIn = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await signInWithEmail({ email, password });
+      navigate(decodeURIComponent(params.get('next') || '/Home'));
+    } catch (err) {
+      setError(err?.message || 'Sign in failed.');
+    } finally {
+      setIsSubmitting(false);
     }
-    await signInWithGoogle({ name: email.split('@')[0], email, picture: '' });
-    navigate(decodeURIComponent(params.get('next') || '/Home'));
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-teal-50 to-cyan-100 flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-3xl border border-white/60 bg-white/40 backdrop-blur-xl shadow-2xl p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <div className="mx-auto w-14 h-14 rounded-2xl bg-emerald-500/80 flex items-center justify-center shadow-lg">
-            <Leaf className="w-8 h-8 text-white" />
+    <div className="min-h-screen bg-[#f2f4f7] grid md:grid-cols-2">
+      <div className="hidden md:flex bg-gradient-to-b from-[#13264f] to-[#233f7e] text-white p-12 items-center justify-center">
+        <div className="max-w-md text-center space-y-8">
+          <div className="mx-auto bg-white w-16 h-16 rounded-xl flex items-center justify-center">
+            <GraduationCap className="text-[#1f4d9b]" />
           </div>
-          <h1 className="text-3xl font-bold text-slate-800">Verdent Vision</h1>
-          <p className="text-slate-600">Sign in to access dashboard, admin controls, and farm insights.</p>
+          <h1 className="text-5xl font-bold">Welcome back.<br />Your campus awaits.</h1>
+          <p className="text-lg text-blue-100">Sign in to discover events, connect with communities, and never miss what matters.</p>
         </div>
+      </div>
 
-        <div id="google-signin-btn" className="flex justify-center" />
+      <div className="flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-3xl bg-white border p-8 shadow-xl space-y-5">
+          <h2 className="text-4xl font-bold">Sign In</h2>
+          <p className="text-slate-500">New? <Link className="text-sky-600 font-semibold" to="/signup">Create an account</Link></p>
 
-        <Button onClick={fallbackGoogleSignIn} className="w-full bg-white/80 text-slate-800 hover:bg-white border border-slate-200 gap-2">
-          <Mail className="w-4 h-4" />
-          Continue with Google Mail
-        </Button>
+          <div id="google-signin-btn" className="flex justify-center" />
+          <div className="text-center text-sm text-slate-500">OR WITH EMAIL</div>
 
-        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+          <form onSubmit={onEmailSignIn} className="space-y-4">
+            <p className="font-semibold">Sign in as</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setAccountType('attendee')} className={`border rounded-xl p-4 ${accountType === 'attendee' ? 'border-sky-500 bg-sky-50' : 'border-slate-200'}`}>
+                <UserRound className="mx-auto mb-2 text-violet-700" />Attendee
+              </button>
+              <button type="button" onClick={() => setAccountType('organizer')} className={`border rounded-xl p-4 ${accountType === 'organizer' ? 'border-sky-500 bg-sky-50' : 'border-slate-200'}`}>
+                <Building2 className="mx-auto mb-2 text-slate-500" />Organizer
+              </button>
+            </div>
+            <Input placeholder="you@campus.edu" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input placeholder="********" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Button type="submit" disabled={isSubmitting} className="w-full bg-sky-500 hover:bg-sky-600 text-white">Sign In</Button>
+            {error && <p className="text-sm text-red-600">{error}</p>}
+          </form>
+        </div>
       </div>
     </div>
   );

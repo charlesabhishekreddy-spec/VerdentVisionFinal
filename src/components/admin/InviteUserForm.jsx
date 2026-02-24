@@ -5,19 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2, Mail, CheckCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function InviteUserForm({ onClose }) {
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState("user");
   const [success, setSuccess] = useState(false);
   const queryClient = useQueryClient();
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      await appClient.users.inviteUser(email, role);
+      await appClient.users.inviteUser(email);
     },
     onSuccess: () => {
       setSuccess(true);
@@ -51,7 +49,7 @@ export default function InviteUserForm({ onClose }) {
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle className="h-4 w-4 text-green-600" />
             <AlertDescription className="text-green-800">
-              Invitation sent successfully! User will receive an email with login instructions.
+              Invitation sent successfully. Admin rights are reserved only for charlesabhishekreddy@gmail.com.
             </AlertDescription>
           </Alert>
         ) : (
@@ -67,29 +65,6 @@ export default function InviteUserForm({ onClose }) {
                 required
                 disabled={inviteMutation.isPending}
               />
-            </div>
-
-            <div>
-              <Label htmlFor="role">User Role *</Label>
-              <Select value={role} onValueChange={setRole} disabled={inviteMutation.isPending}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">
-                    <div>
-                      <div className="font-medium">Regular User</div>
-                      <div className="text-xs text-gray-500">Can access all farming features</div>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="admin">
-                    <div>
-                      <div className="font-medium">Administrator</div>
-                      <div className="text-xs text-gray-500">Full access including user management</div>
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {inviteMutation.isError && (
