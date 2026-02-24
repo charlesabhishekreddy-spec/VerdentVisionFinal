@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,31 +21,31 @@ export default function Predictions() {
 
   const { data: predictions = [] } = useQuery({
     queryKey: ['predictions'],
-    queryFn: () => base44.entities.PestPrediction.filter({ is_active: true }, '-created_date'),
+    queryFn: () => appClient.entities.PestPrediction.filter({ is_active: true }, '-created_date'),
   });
 
   const { data: diagnoses = [] } = useQuery({
     queryKey: ['historical-diagnoses'],
-    queryFn: () => base44.entities.PlantDiagnosis.list('-created_date', 50),
+    queryFn: () => appClient.entities.PlantDiagnosis.list('-created_date', 50),
   });
 
   const { data: weatherLogs = [] } = useQuery({
     queryKey: ['weather-logs'],
-    queryFn: () => base44.entities.WeatherLog.list('-date', 30),
+    queryFn: () => appClient.entities.WeatherLog.list('-date', 30),
   });
 
   const { data: outbreakReports = [] } = useQuery({
     queryKey: ['outbreak-reports'],
-    queryFn: () => base44.entities.OutbreakReport.list('-created_date', 20),
+    queryFn: () => appClient.entities.OutbreakReport.list('-created_date', 20),
   });
 
   const { data: feedbackData = [] } = useQuery({
     queryKey: ['diagnosis-feedback'],
-    queryFn: () => base44.entities.DiagnosisFeedback.list('-created_date', 100),
+    queryFn: () => appClient.entities.DiagnosisFeedback.list('-created_date', 100),
   });
 
   const dismissMutation = useMutation({
-    mutationFn: (id) => base44.entities.PestPrediction.update(id, { user_dismissed: true }),
+    mutationFn: (id) => appClient.entities.PestPrediction.update(id, { user_dismissed: true }),
     onSuccess: () => {
       queryClient.invalidateQueries(['predictions']);
     },
@@ -55,14 +55,14 @@ export default function Predictions() {
     setIsGenerating(true);
     try {
       // Fetch user preferences for personalization
-      const user = await base44.auth.me();
+      const user = await appClient.auth.me();
       const userCrops = user?.primary_crops || [];
       const userLocation = user?.location || "Unknown";
       const userFarmingMethod = user?.farming_method || "conventional";
       const userSoilType = user?.soil_type || "unknown";
       
       // Fetch plant database for comprehensive disease analysis
-      const plantDatabase = await base44.entities.PlantDatabase.list('', 300);
+      const plantDatabase = await appClient.entities.PlantDatabase.list('', 300);
       
       const recentWeather = weatherLogs.slice(0, 7);
       const recentDiagnoses = diagnoses.slice(0, 20);
@@ -110,7 +110,7 @@ Rainfall: ${currentWeather.rainfall || 0}"
 
 ` : '';
 
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `You are an advanced agricultural disease prediction AI with access to comprehensive plant vulnerability data and user feedback patterns.
 
 USER FARM PROFILE (PRIORITIZE THESE):
@@ -178,7 +178,7 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
       });
 
       for (const pred of result.predictions) {
-        await base44.entities.PestPrediction.create({
+        await appClient.entities.PestPrediction.create({
           pest_or_disease: pred.pest_or_disease,
           risk_level: pred.risk_level,
           probability: pred.probability,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Home, Camera, MessageCircle, Calendar, Users, Sprout, User, BookOpen, CloudRain, Bug, Shield } from "lucide-react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
@@ -11,7 +11,7 @@ export default function Layout({ children, currentPageName }) {
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const user = await base44.auth.me();
+        const user = await appClient.auth.me();
         setCurrentUser(user);
       } catch (error) {
         console.error("Failed to fetch user:", error);

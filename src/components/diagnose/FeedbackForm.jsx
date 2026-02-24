@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ export default function FeedbackForm({ diagnosis, onSubmitted }) {
 
   const submitMutation = useMutation({
     mutationFn: async (feedbackData) => {
-      await base44.entities.DiagnosisFeedback.create(feedbackData);
+      await appClient.entities.DiagnosisFeedback.create(feedbackData);
     },
     onSuccess: () => {
       setSubmitted(true);

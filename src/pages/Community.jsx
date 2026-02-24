@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,11 @@ export default function Community() {
 
   const { data: posts = [] } = useQuery({
     queryKey: ['forum-posts'],
-    queryFn: () => base44.entities.ForumPost.list('-created_date'),
+    queryFn: () => appClient.entities.ForumPost.list('-created_date'),
   });
 
   const createPostMutation = useMutation({
-    mutationFn: (data) => base44.entities.ForumPost.create(data),
+    mutationFn: (data) => appClient.entities.ForumPost.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(['forum-posts']);
       setShowForm(false);
@@ -27,7 +27,7 @@ export default function Community() {
   });
 
   const handleSubmit = async (data) => {
-    const user = await base44.auth.me().catch(() => ({ full_name: 'Anonymous' }));
+    const user = await appClient.auth.me().catch(() => ({ full_name: 'Anonymous' }));
     createPostMutation.mutate({
       ...data,
       author_name: user.full_name,

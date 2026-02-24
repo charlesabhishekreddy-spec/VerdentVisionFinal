@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -86,14 +86,14 @@ export default function Diagnose() {
     setError(null);
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: selectedFile });
+      const { file_url } = await appClient.integrations.Core.UploadFile({ file: selectedFile });
 
       // Fetch plant database for reference
-      const plantDatabase = await base44.entities.PlantDatabase.list('', 300);
+      const plantDatabase = await appClient.entities.PlantDatabase.list('', 300);
       const plantNames = plantDatabase.map(p => `${p.common_name} (${p.scientific_name})`).join(', ');
 
       // STEP 1: Plant Identification (Deep Analysis)
-      const plantIdentification = await base44.integrations.Core.InvokeLLM({
+      const plantIdentification = await appClient.integrations.Core.InvokeLLM({
         prompt: `You are a master botanist specializing in plant taxonomy and morphology. Analyze this leaf image and identify the plant species with EXTREME precision.
 
 PLANT DATABASE REFERENCE:
@@ -145,7 +145,7 @@ IDENTIFY WITH 100% CONFIDENCE - Never say "unknown". Use morphological clues to 
       const knownPests = plantData?.common_pests?.join(', ') || 'general pests';
 
       // STEP 2: Disease Detection (Pathology Analysis)
-      const diseaseAnalysis = await base44.integrations.Core.InvokeLLM({
+      const diseaseAnalysis = await appClient.integrations.Core.InvokeLLM({
         prompt: `You are an expert plant pathologist. The plant has been identified as: ${plantIdentification.plant_name} (${plantIdentification.scientific_name}).
 
 KNOWN DISEASES FOR THIS PLANT: ${knownDiseases}
@@ -200,7 +200,7 @@ Calculate precise infection percentage based on visible leaf area affected.`,
       });
 
       // STEP 3: Cross-Verification
-      const verification = await base44.integrations.Core.InvokeLLM({
+      const verification = await appClient.integrations.Core.InvokeLLM({
         prompt: `FINAL VERIFICATION:
 Plant: ${plantIdentification.plant_name}
 Disease: ${diseaseAnalysis.disease_name}
@@ -239,7 +239,7 @@ Is this diagnosis accurate? If not, provide corrected identification.`,
         image_url: file_url
       };
 
-      const saved = await base44.entities.PlantDiagnosis.create({
+      const saved = await appClient.entities.PlantDiagnosis.create({
         plant_name: diagnosis.plant_name,
         disease_name: diagnosis.disease_name,
         severity: diagnosis.severity,
@@ -251,13 +251,13 @@ Is this diagnosis accurate? If not, provide corrected identification.`,
 
       // Auto-generate treatments for high-confidence diagnoses
       if (finalConfidence >= 70 && !diagnosis.is_healthy) {
-        const existingTreatments = await base44.entities.Treatment.filter({
+        const existingTreatments = await appClient.entities.Treatment.filter({
           disease_name: diagnosis.disease_name
         });
 
         if (existingTreatments.length === 0) {
           try {
-            const treatmentResult = await base44.integrations.Core.InvokeLLM({
+            const treatmentResult = await appClient.integrations.Core.InvokeLLM({
               prompt: `Generate treatment recommendations for ${diagnosis.disease_name} on ${diagnosis.plant_name}.
 
 Provide exactly 4 treatments - 2 organic and 2 chemical:
@@ -294,7 +294,7 @@ Be specific and practical.`,
             });
 
             for (const treatment of treatmentResult.treatments) {
-              await base44.entities.Treatment.create({
+              await appClient.entities.Treatment.create({
                 disease_name: diagnosis.disease_name,
                 treatment_name: treatment.name,
                 treatment_type: treatment.type,

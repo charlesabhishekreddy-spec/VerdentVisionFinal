@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,12 +11,12 @@ export default function TreatmentHistory() {
 
   const { data: treatments = [] } = useQuery({
     queryKey: ['user-treatments'],
-    queryFn: () => base44.entities.Treatment.list('-created_date'),
+    queryFn: () => appClient.entities.Treatment.list('-created_date'),
   });
 
   const toggleFavoriteMutation = useMutation({
     mutationFn: ({ id, isFavorite }) =>
-      base44.entities.Treatment.update(id, { is_favorite: !isFavorite }),
+      appClient.entities.Treatment.update(id, { is_favorite: !isFavorite }),
     onSuccess: () => {
       queryClient.invalidateQueries(['user-treatments']);
     }

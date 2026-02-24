@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,7 @@ export default function Planner() {
 
     setIsGenerating(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `Generate a detailed week-by-week crop timeline for ${cropName} starting from ${plantingDate}.
 
 Include:
@@ -57,7 +57,7 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
 
       setTimeline(result);
 
-      await base44.entities.CropPlan.create({
+      await appClient.entities.CropPlan.create({
         crop_name: cropName,
         planting_date: plantingDate,
         expected_harvest_date: result.expected_harvest_date,

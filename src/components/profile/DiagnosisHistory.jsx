@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export default function DiagnosisHistory({ diagnoses }) {
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.PlantDiagnosis.delete(id),
+    mutationFn: (id) => appClient.entities.PlantDiagnosis.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries(['user-diagnoses']);
     }

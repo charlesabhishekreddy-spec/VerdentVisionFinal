@@ -1,5 +1,5 @@
 import React from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export default function OutbreakList({ reports }) {
 
   const verifyMutation = useMutation({
     mutationFn: async (report) => {
-      await base44.entities.OutbreakReport.update(report.id, {
+      await appClient.entities.OutbreakReport.update(report.id, {
         verification_count: (report.verification_count || 0) + 1,
         verified: (report.verification_count || 0) + 1 >= 3
       });

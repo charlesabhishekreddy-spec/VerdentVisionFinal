@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ export default function OutbreakReportForm({ onClose }) {
           setFormData(prev => ({ ...prev, latitude, longitude }));
           
           // Get location name
-          const result = await base44.integrations.Core.InvokeLLM({
+          const result = await appClient.integrations.Core.InvokeLLM({
             prompt: `What is the city/region name for coordinates: ${latitude}, ${longitude}? Return just the location name.`,
             add_context_from_internet: true,
             response_json_schema: {
@@ -53,7 +53,7 @@ export default function OutbreakReportForm({ onClose }) {
     if (file) {
       setIsUploading(true);
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await appClient.integrations.Core.UploadFile({ file });
         setFormData(prev => ({ ...prev, image_url: file_url }));
       } catch (err) {
         console.error(err);
@@ -64,7 +64,7 @@ export default function OutbreakReportForm({ onClose }) {
   };
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.OutbreakReport.create({
+    mutationFn: (data) => appClient.entities.OutbreakReport.create({
       ...data,
       affected_crops: data.affected_crops.split(',').map(c => c.trim()).filter(Boolean),
       verification_count: 0,

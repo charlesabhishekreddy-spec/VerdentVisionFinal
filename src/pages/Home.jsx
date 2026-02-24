@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { createPageUrl } from "@/utils";
@@ -17,22 +17,22 @@ export default function Home() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    appClient.auth.me().then(setUser).catch(() => {});
   }, []);
 
   const { data: diagnoses = [] } = useQuery({
     queryKey: ['recent-diagnoses'],
-    queryFn: () => base44.entities.PlantDiagnosis.list('-created_date', 5),
+    queryFn: () => appClient.entities.PlantDiagnosis.list('-created_date', 5),
   });
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['upcoming-tasks'],
-    queryFn: () => base44.entities.Task.filter({ status: 'pending' }, 'due_date', 5),
+    queryFn: () => appClient.entities.Task.filter({ status: 'pending' }, 'due_date', 5),
   });
 
   const { data: plans = [] } = useQuery({
     queryKey: ['active-plans'],
-    queryFn: () => base44.entities.CropPlan.filter({ status: 'active' }, '-created_date', 3),
+    queryFn: () => appClient.entities.CropPlan.filter({ status: 'active' }, '-created_date', 3),
   });
 
   const stats = [

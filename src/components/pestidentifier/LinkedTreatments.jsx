@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,13 @@ export default function LinkedTreatments({ pestOrDisease }) {
 
   const { data: treatments = [], isLoading } = useQuery({
     queryKey: ['treatments', pestOrDisease],
-    queryFn: () => base44.entities.Treatment.filter({ disease_name: pestOrDisease }),
+    queryFn: () => appClient.entities.Treatment.filter({ disease_name: pestOrDisease }),
     enabled: !!pestOrDisease
   });
 
   const favoriteMutation = useMutation({
     mutationFn: ({ id, isFavorite }) =>
-      base44.entities.Treatment.update(id, { is_favorite: !isFavorite }),
+      appClient.entities.Treatment.update(id, { is_favorite: !isFavorite }),
     onSuccess: () => {
       queryClient.invalidateQueries(['treatments', pestOrDisease]);
     }
@@ -29,7 +29,7 @@ export default function LinkedTreatments({ pestOrDisease }) {
   const generateTreatments = async () => {
     setIsGenerating(true);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `Generate treatment recommendations for: ${pestOrDisease}
 
 Provide exactly 4 treatment options - 2 organic and 2 chemical treatments.
@@ -65,7 +65,7 @@ Be specific and practical.`,
       });
 
       for (const treatment of result.treatments || []) {
-        await base44.entities.Treatment.create({
+        await appClient.entities.Treatment.create({
           disease_name: pestOrDisease,
           treatment_name: treatment.name,
           treatment_type: treatment.type,

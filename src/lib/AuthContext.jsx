@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { appClient } from '@/api/appClient';
 
 const AuthContext = createContext();
 
@@ -7,22 +7,19 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
+  const [isLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState({ id: 'local-app', public_settings: { auth_required: false } });
-
-  useEffect(() => {
-    checkAppState();
-  }, []);
+  const [appPublicSettings] = useState({ id: 'verdent-local', public_settings: { auth_required: true } });
 
   const checkAppState = async () => {
     setIsLoadingAuth(true);
-    setAuthError(null);
     try {
-      const currentUser = await base44.auth.me();
+      const currentUser = await appClient.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
+      setAuthError(null);
     } catch (error) {
+      setUser(null);
       setIsAuthenticated(false);
       setAuthError({ type: 'auth_required', message: error?.message || 'Authentication required' });
     } finally {
@@ -30,15 +27,27 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  useEffect(() => {
+    checkAppState();
+  }, []);
+
+  const signInWithGoogle = async (profile) => {
+    const currentUser = await appClient.auth.signInWithGoogle(profile);
+    setUser(currentUser);
+    setIsAuthenticated(true);
+    setAuthError(null);
+    return currentUser;
+  };
+
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
-    if (shouldRedirect) base44.auth.logout(window.location.href);
-    else base44.auth.logout();
+    if (shouldRedirect) appClient.auth.logout('/login');
+    else appClient.auth.logout();
   };
 
   const navigateToLogin = () => {
-    base44.auth.redirectToLogin(window.location.href);
+    appClient.auth.redirectToLogin(window.location.href);
   };
 
   return (
@@ -49,9 +58,10 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       appPublicSettings,
+      signInWithGoogle,
       logout,
       navigateToLogin,
-      checkAppState
+      checkAppState,
     }}>
       {children}
     </AuthContext.Provider>
@@ -60,8 +70,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

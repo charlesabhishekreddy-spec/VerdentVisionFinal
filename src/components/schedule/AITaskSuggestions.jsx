@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ export default function AITaskSuggestions() {
   const queryClient = useQueryClient();
 
   const createTaskMutation = useMutation({
-    mutationFn: (taskData) => base44.entities.Task.create(taskData),
+    mutationFn: (taskData) => appClient.entities.Task.create(taskData),
     onSuccess: () => {
       queryClient.invalidateQueries(['tasks']);
     }
@@ -22,20 +22,20 @@ export default function AITaskSuggestions() {
   const generateSuggestions = async () => {
     setIsGenerating(true);
     try {
-      const user = await base44.auth.me();
+      const user = await appClient.auth.me();
       const location = user?.location || "current location";
       const crops = user?.primary_crops || [];
 
       // Fetch relevant data
       const [weatherLogs, predictions, cropPlans, existingTasks] = await Promise.all([
-        base44.entities.WeatherLog.list('-date', 7),
-        base44.entities.PestPrediction.filter({ is_active: true }),
-        base44.entities.CropPlan.filter({ status: 'active' }),
-        base44.entities.Task.filter({ status: 'pending' })
+        appClient.entities.WeatherLog.list('-date', 7),
+        appClient.entities.PestPrediction.filter({ is_active: true }),
+        appClient.entities.CropPlan.filter({ status: 'active' }),
+        appClient.entities.Task.filter({ status: 'pending' })
       ]);
 
       // Get real-time weather
-      const weatherResult = await base44.integrations.Core.InvokeLLM({
+      const weatherResult = await appClient.integrations.Core.InvokeLLM({
         prompt: `Get current and 3-day weather forecast for ${location}. Use real-time data.`,
         add_context_from_internet: true,
         response_json_schema: {
@@ -66,7 +66,7 @@ export default function AITaskSuggestions() {
         }
       });
 
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `You are an AI farming task scheduler. Analyze the data and suggest 5-8 specific, actionable tasks for the next 7 days.
 
 USER FARM:

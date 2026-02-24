@@ -156,3 +156,15 @@ button:focus-visible {
     @apply bg-background text-foreground;
   }
 }
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-white/60 bg-white/45 backdrop-blur-xl shadow-xl;
+  }
+}
+
+body {
+  background: radial-gradient(circle at 10% 0%, rgba(167,243,208,0.35), transparent 40%),
+    radial-gradient(circle at 90% 20%, rgba(191,219,254,0.35), transparent 35%),
+    linear-gradient(180deg, #ecfeff 0%, #f8fafc 100%);
+}
