@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { Sprout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/AuthContext';
@@ -34,7 +34,7 @@ export default function Signup() {
       <div className="hidden md:flex bg-gradient-to-b from-[#13264f] to-[#233f7e] text-white p-12 items-center justify-center">
         <div className="max-w-md text-center space-y-8">
           <div className="mx-auto bg-white w-16 h-16 rounded-xl flex items-center justify-center">
-            <GraduationCap className="text-[#1f4d9b]" />
+            <Sprout className="text-[#1f4d9b]" />
           </div>
           <h1 className="text-5xl font-bold">Create your account.</h1>
           <p className="text-lg text-blue-100">Join Verdent Vision to manage farms, diagnostics, and AI-powered planning.</p>
