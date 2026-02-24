@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, Beaker, Leaf, ChevronDown, ChevronUp, RefreshCw, Heart, Star } from "lucide-react";
@@ -15,7 +15,7 @@ export default function TreatmentRecommendations({ diagnosis }) {
     setIsLoading(true);
     try {
       // First, check if treatments exist in database
-      const existingTreatments = await base44.entities.Treatment.filter({
+      const existingTreatments = await appClient.entities.Treatment.filter({
         disease_name: diagnosis.disease_name
       });
 
@@ -33,7 +33,7 @@ export default function TreatmentRecommendations({ diagnosis }) {
         setTreatments(formattedTreatments);
       } else {
         // Generate new treatments with AI
-        const result = await base44.integrations.Core.InvokeLLM({
+        const result = await appClient.integrations.Core.InvokeLLM({
           prompt: `You are an expert plant pathologist. Provide detailed treatment recommendations for:
 
 Plant: ${diagnosis.plant_name}
@@ -74,7 +74,7 @@ Be specific and practical.`,
         // Auto-save treatments to database
         const savedTreatments = [];
         for (const treatment of result.treatments || []) {
-          const saved = await base44.entities.Treatment.create({
+          const saved = await appClient.entities.Treatment.create({
             disease_name: diagnosis.disease_name,
             treatment_name: treatment.name,
             treatment_type: treatment.type,
@@ -109,9 +109,9 @@ Be specific and practical.`,
   const saveToWishlist = async (treatment) => {
     try {
       if (treatment.id) {
-        await base44.entities.Treatment.update(treatment.id, { is_favorite: true });
+        await appClient.entities.Treatment.update(treatment.id, { is_favorite: true });
       } else {
-        await base44.entities.Treatment.create({
+        await appClient.entities.Treatment.create({
           disease_name: diagnosis.disease_name,
           treatment_name: treatment.name,
           treatment_type: treatment.type,

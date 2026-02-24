@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +25,7 @@ export default function PostForm({ onSubmit, onCancel, isLoading }) {
     
     try {
       const uploadPromises = files.map(file => 
-        base44.integrations.Core.UploadFile({ file })
+        appClient.integrations.Core.UploadFile({ file })
       );
       const results = await Promise.all(uploadPromises);
       const urls = results.map(r => r.file_url);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +31,7 @@ export default function Chat() {
     const file = e.target.files[0];
     if (file) {
       try {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const { file_url } = await appClient.integrations.Core.UploadFile({ file });
         setUploadedImage(file_url);
       } catch (error) {
         console.error("Failed to upload image:", error);
@@ -78,7 +78,7 @@ Provide helpful, accurate, and practical advice. Be specific about:
 
 Be conversational, supportive, and encouraging.`;
 
-      const response = await base44.integrations.Core.InvokeLLM({
+      const response = await appClient.integrations.Core.InvokeLLM({
         prompt,
         file_urls: currentImage ? [currentImage] : undefined,
         add_context_from_internet: true

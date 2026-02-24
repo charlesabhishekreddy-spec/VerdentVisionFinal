@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,26 +15,26 @@ export default function Profile() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    base44.auth.me().then(setUser).catch(() => {});
+    appClient.auth.me().then(setUser).catch(() => {});
   }, []);
 
   const { data: diagnoses = [] } = useQuery({
     queryKey: ['user-diagnoses'],
-    queryFn: () => base44.entities.PlantDiagnosis.list('-created_date'),
+    queryFn: () => appClient.entities.PlantDiagnosis.list('-created_date'),
   });
 
   const { data: tasks = [] } = useQuery({
     queryKey: ['user-tasks'],
-    queryFn: () => base44.entities.Task.list('-created_date'),
+    queryFn: () => appClient.entities.Task.list('-created_date'),
   });
 
   const { data: posts = [] } = useQuery({
     queryKey: ['user-posts'],
-    queryFn: () => base44.entities.ForumPost.list('-created_date'),
+    queryFn: () => appClient.entities.ForumPost.list('-created_date'),
   });
 
   const handleLogout = () => {
-    base44.auth.logout(createPageUrl("Home"));
+    appClient.auth.logout(createPageUrl("Home"));
   };
 
   const achievements = [

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ export default function WeatherInput({ onClose }) {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.WeatherLog.create(data),
+    mutationFn: (data) => appClient.entities.WeatherLog.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries(['weather-logs']);
       onClose();

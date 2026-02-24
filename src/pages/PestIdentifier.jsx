@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Camera, Upload, Loader2, Bug, AlertCircle } from "lucide-react";
@@ -36,15 +36,15 @@ export default function PestIdentifier() {
     setError(null);
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file: selectedFile });
+      const { file_url } = await appClient.integrations.Core.UploadFile({ file: selectedFile });
 
       // Fetch plant database to cross-reference common pests/diseases
-      const plantDatabase = await base44.entities.PlantDatabase.list('', 300);
+      const plantDatabase = await appClient.entities.PlantDatabase.list('', 300);
       const allPests = [...new Set(plantDatabase.flatMap(p => p.common_pests || []))];
       const allDiseases = [...new Set(plantDatabase.flatMap(p => p.common_diseases || []))];
 
       // AI Analysis
-      const analysis = await base44.integrations.Core.InvokeLLM({
+      const analysis = await appClient.integrations.Core.InvokeLLM({
         prompt: `You are an expert entomologist and plant pathologist. Analyze this image to identify any pest or disease present.
 
 KNOWN PESTS DATABASE: ${allPests.slice(0, 50).join(', ')}

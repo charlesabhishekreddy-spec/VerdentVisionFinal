@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CloudRain, Wind, Droplets, Thermometer, AlertTriangle, RefreshCw, Loader2, Sun, Cloud, CloudDrizzle, CloudSnow } from "lucide-react";
@@ -14,10 +14,10 @@ export default function WeatherDashboard({ compact = false }) {
   const fetchWeather = async () => {
     setIsLoading(true);
     try {
-      const user = await base44.auth.me();
+      const user = await appClient.auth.me();
       const location = user?.location || "current location";
 
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `Get REAL-TIME weather data for ${location}. Use current internet data sources.
 
 Provide:
@@ -93,7 +93,7 @@ Use actual real-time weather data from reliable sources.`,
 
       // Auto-log weather for predictions
       if (result.current) {
-        await base44.entities.WeatherLog.create({
+        await appClient.entities.WeatherLog.create({
           date: new Date().toISOString().split('T')[0],
           location: result.current.location,
           temperature_high: result.current.temperature,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, Droplets, Bug, Sprout, Calendar, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -11,12 +11,12 @@ export default function WeatherRecommendations() {
   useEffect(() => {
     const fetchRecommendations = async () => {
       try {
-        const user = await base44.auth.me();
+        const user = await appClient.auth.me();
         const location = user?.location || "current location";
         const crops = user?.primary_crops || [];
         const farmingMethod = user?.farming_method || "conventional";
 
-        const result = await base44.integrations.Core.InvokeLLM({
+        const result = await appClient.integrations.Core.InvokeLLM({
           prompt: `Based on real-time weather conditions for ${location}, provide AI-driven farming recommendations.
 
 USER CONTEXT:

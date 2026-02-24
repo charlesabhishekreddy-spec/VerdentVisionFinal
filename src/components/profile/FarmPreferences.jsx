@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +30,7 @@ export default function FarmPreferences({ user }) {
         ...data,
         primary_crops: data.primary_crops.split(",").map(c => c.trim()).filter(Boolean)
       };
-      await base44.auth.updateMe(updateData);
+      await appClient.auth.updateMe(updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['user']);

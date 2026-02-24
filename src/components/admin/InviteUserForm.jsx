@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export default function InviteUserForm({ onClose }) {
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
-      await base44.users.inviteUser(email, role);
+      await appClient.users.inviteUser(email, role);
     },
     onSuccess: () => {
       setSuccess(true);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, MapPin, RefreshCw, Thermometer, Droplets, Wind, Cloud } from "lucide-react";
@@ -14,7 +14,7 @@ export default function WeatherWidget({ onWeatherData }) {
     setIsLoading(true);
     setError(null);
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
+      const result = await appClient.integrations.Core.InvokeLLM({
         prompt: `Get the current real-time weather data for coordinates: Latitude ${lat}, Longitude ${lon}.
 
 Provide accurate, current weather information including:
@@ -50,7 +50,7 @@ Be precise and use real current data.`,
       }
 
       // Auto-save to weather log
-      await base44.entities.WeatherLog.create({
+      await appClient.entities.WeatherLog.create({
         date: new Date().toISOString().split('T')[0],
         location: result.location_name,
         temperature_high: result.temperature,

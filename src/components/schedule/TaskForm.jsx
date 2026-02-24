@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { base44 } from "@/api/base44Client";
+import { appClient } from "@/api/appClient";
 import RecurringTaskForm from "./RecurringTaskForm.jsx";
 
 export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks }) {
@@ -28,7 +28,7 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
   // Fetch all users for assignment
   const { data: users = [] } = useQuery({
     queryKey: ['all-users'],
-    queryFn: () => base44.entities.User.list(),
+    queryFn: () => appClient.entities.User.list(),
   });
 
   const handleSubmit = (e) => {
