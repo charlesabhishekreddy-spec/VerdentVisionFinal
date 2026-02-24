@@ -21,7 +21,7 @@ export default function Admin() {
       setCurrentUser(user);
 
       if (user.role !== 'admin') {
-        setError('Admin access requires an approved admin Google account. Set VITE_ADMIN_EMAILS to your gmail.');
+        setError('Admin access is restricted. Only charlesabhishekreddy@gmail.com has admin rights.');
         return [];
       }
       return appClient.entities.User.list('-created_date', 100);

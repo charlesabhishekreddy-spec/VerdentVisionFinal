@@ -39,6 +39,22 @@ export const AuthProvider = ({ children }) => {
     return currentUser;
   };
 
+  const signInWithEmail = async (payload) => {
+    const currentUser = await appClient.auth.signInWithEmail(payload);
+    setUser(currentUser);
+    setIsAuthenticated(true);
+    setAuthError(null);
+    return currentUser;
+  };
+
+  const registerWithEmail = async (payload) => {
+    const currentUser = await appClient.auth.registerWithEmail(payload);
+    setUser(currentUser);
+    setIsAuthenticated(true);
+    setAuthError(null);
+    return currentUser;
+  };
+
   const logout = (shouldRedirect = true) => {
     setUser(null);
     setIsAuthenticated(false);
@@ -59,6 +75,8 @@ export const AuthProvider = ({ children }) => {
       authError,
       appPublicSettings,
       signInWithGoogle,
+      signInWithEmail,
+      registerWithEmail,
       logout,
       navigateToLogin,
       checkAppState,

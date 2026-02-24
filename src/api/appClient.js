@@ -1,21 +1,27 @@
-const STORAGE_KEY = 'verdent_vision_db_v2';
-const SESSION_KEY = 'verdent_vision_session';
+const STORAGE_KEY = 'verdent_vision_db_v3';
+const SESSION_KEY = 'verdent_vision_session_v2';
+const ADMIN_EMAIL = 'charlesabhishekreddy@gmail.com';
 
 const nowIso = () => new Date().toISOString();
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+const normalizeEmail = (email = '') => email.trim().toLowerCase();
+const getRoleForEmail = (email = '') => normalizeEmail(email) === ADMIN_EMAIL ? 'admin' : 'user';
 
 const seedDatabase = () => ({
   User: [
     {
       id: 'u-admin',
       full_name: 'Charles Admin',
-      email: 'charlesabhishekreddy@gmail.com',
+      email: ADMIN_EMAIL,
       role: 'admin',
       provider: 'google',
       farm_location: 'Main Farm',
       created_date: nowIso(),
     },
   ],
+  AuthEvent: [],
+  ActivityLog: [],
   PlantDatabase: [
     { id: 'p1', common_name: 'Tomato', scientific_name: 'Solanum lycopersicum', common_diseases: ['Early Blight', 'Late Blight'], common_pests: ['Aphids'], created_date: nowIso() },
     { id: 'p2', common_name: 'Potato', scientific_name: 'Solanum tuberosum', common_diseases: ['Scab'], common_pests: ['Beetle'], created_date: nowIso() },
@@ -30,7 +36,11 @@ const readDb = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
     return db;
   }
-  try { return JSON.parse(raw); } catch { return seedDatabase(); }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return seedDatabase();
+  }
 };
 const writeDb = (db) => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 
@@ -45,6 +55,43 @@ const sortItems = (items, sortBy = '') => {
     if (bv == null) return -1;
     return desc ? String(bv).localeCompare(String(av)) : String(av).localeCompare(String(bv));
   });
+};
+
+const sanitizeUser = (user) => {
+  if (!user) return null;
+  const { password_hash, ...safeUser } = user;
+  return safeUser;
+};
+
+const logAuthEvent = (type, email) => {
+  const db = readDb();
+  db.AuthEvent = db.AuthEvent || [];
+  db.AuthEvent.push({ id: makeId(), type, email: normalizeEmail(email), created_date: nowIso() });
+  writeDb(db);
+};
+
+const hashPassword = async (password) => {
+  const payload = new TextEncoder().encode(`verdent:${password}`);
+  const digest = await crypto.subtle.digest('SHA-256', payload);
+  return Array.from(new Uint8Array(digest)).map((x) => x.toString(16).padStart(2, '0')).join('');
+};
+
+const upsertUserByEmail = (profile) => {
+  const db = readDb();
+  const email = normalizeEmail(profile.email);
+  const role = getRoleForEmail(email);
+  const found = (db.User || []).find((u) => normalizeEmail(u.email) === email);
+  const user = found
+    ? { ...found, ...profile, email, role, updated_date: nowIso() }
+    : { id: makeId(), created_date: nowIso(), role, email, ...profile };
+  db.User = [user, ...(db.User || []).filter((u) => normalizeEmail(u.email) !== email)];
+  writeDb(db);
+  return user;
+};
+
+const getStoredUserByEmail = (email) => {
+  const db = readDb();
+  return (db.User || []).find((u) => normalizeEmail(u.email) === normalizeEmail(email));
 };
 
 const entityApi = (entityName) => ({
@@ -87,32 +134,21 @@ const entityApi = (entityName) => ({
 const getSession = () => {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
 };
-const setSession = (user) => localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+const setSession = (user) => localStorage.setItem(SESSION_KEY, JSON.stringify(sanitizeUser(user)));
 const clearSession = () => localStorage.removeItem(SESSION_KEY);
 
-const upsertUserByEmail = (profile) => {
-  const db = readDb();
-  const adminAllowList = (import.meta.env.VITE_ADMIN_EMAILS || 'charlesabhishekreddy@gmail.com').split(',').map((x) => x.trim().toLowerCase());
-  const role = adminAllowList.includes(profile.email.toLowerCase()) ? 'admin' : 'member';
-  const found = (db.User || []).find((u) => u.email?.toLowerCase() === profile.email.toLowerCase());
-  const user = found ? { ...found, ...profile, role, updated_date: nowIso() } : { id: makeId(), created_date: nowIso(), role, ...profile };
-  db.User = [user, ...(db.User || []).filter((u) => u.email?.toLowerCase() !== profile.email.toLowerCase())];
-  writeDb(db);
-  return user;
-};
-
-const createMockFromSchema = (schema) => {
-  if (!schema) return { text: 'Local AI mock output' };
-  if (schema.enum?.length) return schema.enum[0];
-  if (schema.type === 'boolean') return true;
-  if (schema.type === 'number' || schema.type === 'integer') return 82;
-  if (schema.type === 'array') return [createMockFromSchema(schema.items || { type: 'string' })];
-  if (schema.type === 'object') {
-    const o = {};
-    Object.entries(schema.properties || {}).forEach(([k, v]) => (o[k] = createMockFromSchema(v)));
-    return o;
+const buildFarmAdvice = (prompt = '') => {
+  const lower = prompt.toLowerCase();
+  if (lower.includes('aphid') || lower.includes('pest')) {
+    return `### Pest Control Plan\n1. Spray neem oil every 5-7 days in the evening.\n2. Introduce beneficial insects (ladybugs).\n3. Remove heavily infested leaves and keep field borders weed-free.\n\nMonitor for 1 week and reduce broad-spectrum pesticide use to protect natural predators.`;
   }
-  return 'Generated by Verdent AI';
+  if (lower.includes('blight') || lower.includes('fung')) {
+    return `### Disease Management\n- Remove infected foliage immediately.\n- Improve air circulation and water only at soil level.\n- Apply a copper-based fungicide according to label guidance.\n\nRe-check symptoms after 72 hours and continue sanitation.`;
+  }
+  if (lower.includes('fertilizer') || lower.includes('nutrient')) {
+    return `### Nutrient Recommendation\n- Base dose: NPK 19:19:19 at low concentration as foliar spray once in 10-14 days.\n- Add compost or well-decomposed FYM to improve organic matter.\n- Confirm with a soil test before increasing nitrogen.`;
+  }
+  return `### Smart Farming Guidance\n- Track weather and avoid irrigation before rain.\n- Scout plants every 2-3 days for early stress signs.\n- Keep crop records (disease, treatment, and yield) for better decisions.\n\nIf you share crop, stage, and symptoms, I can generate a precise action plan.`;
 };
 
 const entities = new Proxy({}, { get: (_t, prop) => entityApi(prop) });
@@ -133,13 +169,44 @@ export const appClient = {
         provider: 'google',
       });
       setSession(user);
-      return user;
+      logAuthEvent('google_login', profile.email);
+      return sanitizeUser(user);
+    },
+    async registerWithEmail({ fullName, email, password, accountType = 'attendee' }) {
+      const normalizedEmail = normalizeEmail(email);
+      if (!normalizedEmail || !password || password.length < 8) {
+        throw new Error('Use a valid email and password with at least 8 characters.');
+      }
+      if (getStoredUserByEmail(normalizedEmail)?.password_hash) {
+        throw new Error('An account already exists with this email. Please sign in.');
+      }
+      const password_hash = await hashPassword(password);
+      const user = upsertUserByEmail({
+        full_name: fullName,
+        email: normalizedEmail,
+        provider: 'email',
+        account_type: accountType,
+        password_hash,
+      });
+      setSession(user);
+      logAuthEvent('register', normalizedEmail);
+      return sanitizeUser(user);
+    },
+    async signInWithEmail({ email, password }) {
+      const user = getStoredUserByEmail(email);
+      if (!user?.password_hash) throw new Error('No email/password account found. Please sign up first.');
+      const attemptedHash = await hashPassword(password);
+      if (attemptedHash !== user.password_hash) throw new Error('Invalid email or password.');
+      const updated = upsertUserByEmail({ ...user, last_login_date: nowIso() });
+      setSession(updated);
+      logAuthEvent('email_login', email);
+      return sanitizeUser(updated);
     },
     async updateMe(updateData) {
       const current = await this.me();
       const user = upsertUserByEmail({ ...current, ...updateData });
       setSession(user);
-      return user;
+      return sanitizeUser(user);
     },
     logout(redirectTo) {
       clearSession();
@@ -151,8 +218,8 @@ export const appClient = {
     },
   },
   users: {
-    async inviteUser(email, role = 'member') {
-      return upsertUserByEmail({ email, full_name: email.split('@')[0], role, invited: true });
+    async inviteUser(email) {
+      return sanitizeUser(upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', invited: true }));
     },
   },
   integrations: {
@@ -161,16 +228,38 @@ export const appClient = {
         if (file instanceof File) return { file_url: URL.createObjectURL(file) };
         return { file_url: '' };
       },
-      async InvokeLLM({ response_json_schema }) {
-        return createMockFromSchema(response_json_schema);
+      async InvokeLLM({ prompt = '', response_json_schema }) {
+        if (response_json_schema) {
+          const createMockFromSchema = (schema) => {
+            if (!schema) return { text: 'Local AI mock output' };
+            if (schema.enum?.length) return schema.enum[0];
+            if (schema.type === 'boolean') return true;
+            if (schema.type === 'number' || schema.type === 'integer') return 82;
+            if (schema.type === 'array') return [createMockFromSchema(schema.items || { type: 'string' })];
+            if (schema.type === 'object') {
+              const o = {};
+              Object.entries(schema.properties || {}).forEach(([k, v]) => (o[k] = createMockFromSchema(v)));
+              return o;
+            }
+            return 'Generated by Verdent AI';
+          };
+          return createMockFromSchema(response_json_schema);
+        }
+        return buildFarmAdvice(prompt);
       },
     },
   },
   appLogs: {
     async logUserInApp(pageName) {
       const db = readDb();
+      const session = getSession();
       db.ActivityLog = db.ActivityLog || [];
-      db.ActivityLog.push({ id: makeId(), pageName, created_date: nowIso() });
+      db.ActivityLog.push({
+        id: makeId(),
+        pageName,
+        user_email: session?.email || 'anonymous',
+        created_date: nowIso(),
+      });
       writeDb(db);
       return { success: true };
     },
