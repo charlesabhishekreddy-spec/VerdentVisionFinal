@@ -107,48 +107,59 @@ const entityApi = (entityName) => ({
   async create(data) {
     const db = readDb();
     const item = { id: makeId(), created_date: nowIso(), ...data };
-    db[entityName] = [...(db[entityName] || []), item];
+    db[entityName] = [item, ...(db[entityName] || [])];
     writeDb(db);
     return item;
   },
   async update(id, data) {
     const db = readDb();
-    let updated;
-    db[entityName] = (db[entityName] || []).map((i) => {
-      if (String(i.id) !== String(id)) return i;
-      updated = { ...i, ...data, updated_date: nowIso() };
-      return updated;
-    });
+    db[entityName] = (db[entityName] || []).map((i) => (i.id === id ? { ...i, ...data, updated_date: nowIso() } : i));
     writeDb(db);
-    return updated;
+    return (db[entityName] || []).find((i) => i.id === id);
   },
   async delete(id) {
     const db = readDb();
     const before = (db[entityName] || []).length;
-    db[entityName] = (db[entityName] || []).filter((i) => String(i.id) !== String(id));
+    db[entityName] = (db[entityName] || []).filter((i) => i.id !== id);
     writeDb(db);
     return { success: before > db[entityName].length };
   },
 });
 
 const getSession = () => {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch { return null; }
+  // Prefer sessionStorage (non-persistent) over localStorage (persistent)
+  try {
+    const s = sessionStorage.getItem(SESSION_KEY);
+    if (s) return JSON.parse(s);
+  } catch {}
+  try {
+    const l = localStorage.getItem(SESSION_KEY);
+    if (l) return JSON.parse(l);
+  } catch {}
+  return null;
 };
-const setSession = (user) => localStorage.setItem(SESSION_KEY, JSON.stringify(sanitizeUser(user)));
-const clearSession = () => localStorage.removeItem(SESSION_KEY);
+
+const setSession = (user, { remember = true } = {}) => {
+  const safe = JSON.stringify(sanitizeUser(user));
+  if (remember) {
+    try { localStorage.setItem(SESSION_KEY, safe); } catch {}
+    try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+  } else {
+    try { sessionStorage.setItem(SESSION_KEY, safe); } catch {}
+    try { localStorage.removeItem(SESSION_KEY); } catch {}
+  }
+};
+
+const clearSession = () => {
+  try { localStorage.removeItem(SESSION_KEY); } catch {}
+  try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+};
 
 const buildFarmAdvice = (prompt = '') => {
   const lower = prompt.toLowerCase();
-  if (lower.includes('aphid') || lower.includes('pest')) {
-    return `### Pest Control Plan\n1. Spray neem oil every 5-7 days in the evening.\n2. Introduce beneficial insects (ladybugs).\n3. Remove heavily infested leaves and keep field borders weed-free.\n\nMonitor for 1 week and reduce broad-spectrum pesticide use to protect natural predators.`;
-  }
-  if (lower.includes('blight') || lower.includes('fung')) {
-    return `### Disease Management\n- Remove infected foliage immediately.\n- Improve air circulation and water only at soil level.\n- Apply a copper-based fungicide according to label guidance.\n\nRe-check symptoms after 72 hours and continue sanitation.`;
-  }
-  if (lower.includes('fertilizer') || lower.includes('nutrient')) {
-    return `### Nutrient Recommendation\n- Base dose: NPK 19:19:19 at low concentration as foliar spray once in 10-14 days.\n- Add compost or well-decomposed FYM to improve organic matter.\n- Confirm with a soil test before increasing nitrogen.`;
-  }
-  return `### Smart Farming Guidance\n- Track weather and avoid irrigation before rain.\n- Scout plants every 2-3 days for early stress signs.\n- Keep crop records (disease, treatment, and yield) for better decisions.\n\nIf you share crop, stage, and symptoms, I can generate a precise action plan.`;
+  if (lower.includes('tomato') && lower.includes('blight')) return 'For blight on tomatoes, remove infected leaves, improve airflow, and consider a copper-based fungicide.';
+  if (lower.includes('aphid')) return 'For aphids, spray with neem oil, introduce ladybugs, and avoid excessive nitrogen fertilizer.';
+  return 'Maintain good soil health, monitor your crops regularly, and act early when symptoms appear.';
 };
 
 const entities = new Proxy({}, { get: (_t, prop) => entityApi(prop) });
@@ -168,11 +179,11 @@ export const appClient = {
         avatar_url: profile.picture,
         provider: 'google',
       });
-      setSession(user);
+      setSession(user, { remember: true });
       logAuthEvent('google_login', profile.email);
       return sanitizeUser(user);
     },
-    async registerWithEmail({ fullName, email, password, accountType = 'attendee' }) {
+    async registerWithEmail({ fullName, email, password, accountType = 'attendee', remember = true }) {
       const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail || !password || password.length < 8) {
         throw new Error('Use a valid email and password with at least 8 characters.');
@@ -188,24 +199,24 @@ export const appClient = {
         account_type: accountType,
         password_hash,
       });
-      setSession(user);
+      setSession(user, { remember });
       logAuthEvent('register', normalizedEmail);
       return sanitizeUser(user);
     },
-    async signInWithEmail({ email, password }) {
+    async signInWithEmail({ email, password, remember = true }) {
       const user = getStoredUserByEmail(email);
       if (!user?.password_hash) throw new Error('No email/password account found. Please sign up first.');
       const attemptedHash = await hashPassword(password);
       if (attemptedHash !== user.password_hash) throw new Error('Invalid email or password.');
       const updated = upsertUserByEmail({ ...user, last_login_date: nowIso() });
-      setSession(updated);
+      setSession(updated, { remember });
       logAuthEvent('email_login', email);
       return sanitizeUser(updated);
     },
     async updateMe(updateData) {
       const current = await this.me();
       const user = upsertUserByEmail({ ...current, ...updateData });
-      setSession(user);
+      setSession(user, { remember: true });
       return sanitizeUser(user);
     },
     logout(redirectTo) {
@@ -219,49 +230,12 @@ export const appClient = {
   },
   users: {
     async inviteUser(email) {
-      return sanitizeUser(upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', invited: true }));
+      return sanitizeUser(upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', provider: 'invite' }));
     },
   },
-  integrations: {
-    Core: {
-      async UploadFile({ file }) {
-        if (file instanceof File) return { file_url: URL.createObjectURL(file) };
-        return { file_url: '' };
-      },
-      async InvokeLLM({ prompt = '', response_json_schema }) {
-        if (response_json_schema) {
-          const createMockFromSchema = (schema) => {
-            if (!schema) return { text: 'Local AI mock output' };
-            if (schema.enum?.length) return schema.enum[0];
-            if (schema.type === 'boolean') return true;
-            if (schema.type === 'number' || schema.type === 'integer') return 82;
-            if (schema.type === 'array') return [createMockFromSchema(schema.items || { type: 'string' })];
-            if (schema.type === 'object') {
-              const o = {};
-              Object.entries(schema.properties || {}).forEach(([k, v]) => (o[k] = createMockFromSchema(v)));
-              return o;
-            }
-            return 'Generated by Verdent AI';
-          };
-          return createMockFromSchema(response_json_schema);
-        }
-        return buildFarmAdvice(prompt);
-      },
-    },
-  },
-  appLogs: {
-    async logUserInApp(pageName) {
-      const db = readDb();
-      const session = getSession();
-      db.ActivityLog = db.ActivityLog || [];
-      db.ActivityLog.push({
-        id: makeId(),
-        pageName,
-        user_email: session?.email || 'anonymous',
-        created_date: nowIso(),
-      });
-      writeDb(db);
-      return { success: true };
+  ai: {
+    async getFarmAdvice(prompt) {
+      return { answer: buildFarmAdvice(prompt) };
     },
   },
 };

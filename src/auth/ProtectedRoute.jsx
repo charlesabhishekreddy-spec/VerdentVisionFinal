@@ -1,11 +1,17 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "@/lib/AuthContext";
 import AuthLoader from "./AuthLoader";
 
-export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, restoring } = useAuth();
+export default function ProtectedRoute() {
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  const location = useLocation();
 
-  if (restoring) return <AuthLoader />;
+  if (isLoadingAuth) return <AuthLoader />;
 
-  return isAuthenticated ? children : <Navigate to="/login" />;
+  if (!isAuthenticated) {
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
+
+  return <Outlet />;
 }

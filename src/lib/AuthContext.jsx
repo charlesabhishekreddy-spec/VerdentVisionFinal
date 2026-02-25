@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { appClient } from '@/api/appClient';
 
 const AuthContext = createContext();
@@ -6,30 +6,37 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // Canonical session-restore/loading flag
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
+  // Kept for compatibility with App.jsx gate
   const [isLoadingPublicSettings] = useState(false);
+
   const [authError, setAuthError] = useState(null);
   const [appPublicSettings] = useState({ id: 'verdent-local', public_settings: { auth_required: true } });
 
-  const checkAppState = async () => {
+  const checkAppState = useCallback(async () => {
     setIsLoadingAuth(true);
     try {
       const currentUser = await appClient.auth.me();
       setUser(currentUser);
       setIsAuthenticated(true);
       setAuthError(null);
+      return currentUser;
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
       setAuthError({ type: 'auth_required', message: error?.message || 'Authentication required' });
+      return null;
     } finally {
       setIsLoadingAuth(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkAppState();
-  }, []);
+  }, [checkAppState]);
 
   const signInWithGoogle = async (profile) => {
     const currentUser = await appClient.auth.signInWithGoogle(profile);
@@ -66,20 +73,31 @@ export const AuthProvider = ({ children }) => {
     appClient.auth.redirectToLogin(window.location.href);
   };
 
+  // In this local/session storage auth model, refresh = re-read session
+  const refreshToken = async () => checkAppState();
+
   return (
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
+
       isLoadingAuth,
       isLoadingPublicSettings,
+
+      // Compatibility for any code expecting "restoring"
+      restoring: isLoadingAuth,
+
       authError,
       appPublicSettings,
+
       signInWithGoogle,
       signInWithEmail,
       registerWithEmail,
       logout,
       navigateToLogin,
+
       checkAppState,
+      refreshToken,
     }}>
       {children}
     </AuthContext.Provider>

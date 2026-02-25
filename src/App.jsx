@@ -23,6 +23,7 @@ import Login from '@/auth/Login'
 import Signup from '@/pages/Signup' // keep until migrated
 import ProtectedRoute from '@/auth/ProtectedRoute'
 import AuthLoader from '@/auth/AuthLoader'
+import useSilentRefresh from '@/auth/useSilentRefresh'
 
 /* ---------------- PAGE CONFIG ---------------- */
 const { Pages, Layout, mainPage } = pagesConfig;
@@ -42,32 +43,30 @@ const LayoutWrapper = ({ children, currentPageName }) =>
 /* ================= AUTHENTICATED APP ================= */
 
 const AuthenticatedApp = () => {
+  useSilentRefresh();
+
   const {
     isLoadingAuth,
     isLoadingPublicSettings,
     authError,
   } = useAuth();
 
-  /* ---------- GLOBAL AUTH LOADER ---------- */
   if (isLoadingPublicSettings || isLoadingAuth) {
     return <AuthLoader />;
   }
 
-  /* ---------- USER NOT REGISTERED CASE ---------- */
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
   }
 
   return (
     <Routes>
-
-      {/* ---------- PUBLIC ROUTES ---------- */}
+      {/* Public */}
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
 
-      {/* ---------- PROTECTED ROUTES ---------- */}
+      {/* Protected */}
       <Route element={<ProtectedRoute />}>
-
         <Route
           path="/"
           element={
@@ -88,17 +87,12 @@ const AuthenticatedApp = () => {
             }
           />
         ))}
-
       </Route>
 
-      {/* ---------- FALLBACK ---------- */}
       <Route path="*" element={<PageNotFound />} />
-
     </Routes>
   );
 };
-
-/* ================= ROOT APP ================= */
 
 function App() {
   return (
@@ -113,7 +107,7 @@ function App() {
         <VisualEditAgent />
       </QueryClientProvider>
     </AuthProvider>
-  );
+  )
 }
 
-export default App;
+export default App

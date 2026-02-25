@@ -8,42 +8,49 @@ export default function NavigationTracker() {
     const location = useLocation();
     const { isAuthenticated } = useAuth();
     const { Pages, mainPage } = pagesConfig;
+
     const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 
-    // Post navigation changes to parent window
+    /* ---------------- POST URL TO PARENT ---------------- */
     useEffect(() => {
-        window.parent?.postMessage({
-            type: "app_changed_url",
-            url: window.location.href
-        }, '*');
+        window.parent?.postMessage(
+            {
+                type: "app_changed_url",
+                url: window.location.href,
+            },
+            '*'
+        );
     }, [location]);
 
-    // Log user activity when navigating to a page
+    /* ---------------- SAFE USER ACTIVITY LOGGING ---------------- */
     useEffect(() => {
-        // Extract page name from pathname
         const pathname = location.pathname;
+
         let pageName;
-        
+
         if (pathname === '/' || pathname === '') {
             pageName = mainPageKey;
         } else {
-            // Remove leading slash and get the first segment
             const pathSegment = pathname.replace(/^\//, '').split('/')[0];
-            
-            // Try case-insensitive lookup in Pages config
-            const pageKeys = Object.keys(Pages);
-            const matchedKey = pageKeys.find(
+
+            const matchedKey = Object.keys(Pages).find(
                 key => key.toLowerCase() === pathSegment.toLowerCase()
             );
-            
+
             pageName = matchedKey || null;
         }
 
-        if (isAuthenticated && pageName) {
-            appClient.appLogs.logUserInApp(pageName).catch(() => {
-                // Silently fail - logging shouldn't break the app
-            });
+        // ✅ SAFE GUARD (prevents crash)
+        if (
+            isAuthenticated &&
+            pageName &&
+            appClient?.appLogs?.logUserInApp
+        ) {
+            appClient.appLogs
+                .logUserInApp(pageName)
+                .catch(() => {});
         }
+
     }, [location, isAuthenticated, Pages, mainPageKey]);
 
     return null;
