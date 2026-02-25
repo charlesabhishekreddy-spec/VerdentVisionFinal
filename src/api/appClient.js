@@ -1,6 +1,6 @@
-const STORAGE_KEY = 'verdent_vision_db_v3';
-const SESSION_KEY = 'verdent_vision_session_v2';
-const ADMIN_EMAIL = 'charlesabhishekreddy@gmail.com';
+const STORAGE_KEY = "verdent_vision_db_v3";
+const SESSION_KEY = "verdent_vision_session_v2";
+const ADMIN_EMAIL = "charlesabhishekreddy@gmail.com";
 
 /* ================= ENTERPRISE SESSION HELPERS ================= */
 
@@ -25,18 +25,20 @@ const getDeviceInfo = () => ({
 const nowIso = () => new Date().toISOString();
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-const normalizeEmail = (email = '') => email.trim().toLowerCase();
-const getRoleForEmail = (email = '') => normalizeEmail(email) === ADMIN_EMAIL ? 'admin' : 'user';
+const normalizeEmail = (email = "") => email.trim().toLowerCase();
+const getRoleForEmail = (email = "") => (normalizeEmail(email) === ADMIN_EMAIL ? "admin" : "user");
+
+/* ================= LOCAL DB ================= */
 
 const seedDatabase = () => ({
   User: [
     {
-      id: 'u-admin',
-      full_name: 'Charles Admin',
+      id: "u-admin",
+      full_name: "Charles Admin",
       email: ADMIN_EMAIL,
-      role: 'admin',
-      provider: 'google',
-      farm_location: 'Main Farm',
+      role: "admin",
+      provider: "google",
+      farm_location: "Main Farm",
       created_date: nowIso(),
     },
   ],
@@ -45,8 +47,22 @@ const seedDatabase = () => ({
   DeviceSessions: [],
 
   PlantDatabase: [
-    { id: 'p1', common_name: 'Tomato', scientific_name: 'Solanum lycopersicum', common_diseases: ['Early Blight', 'Late Blight'], common_pests: ['Aphids'], created_date: nowIso() },
-    { id: 'p2', common_name: 'Potato', scientific_name: 'Solanum tuberosum', common_diseases: ['Scab'], common_pests: ['Beetle'], created_date: nowIso() },
+    {
+      id: "p1",
+      common_name: "Tomato",
+      scientific_name: "Solanum lycopersicum",
+      common_diseases: ["Early Blight", "Late Blight"],
+      common_pests: ["Aphids"],
+      created_date: nowIso(),
+    },
+    {
+      id: "p2",
+      common_name: "Potato",
+      scientific_name: "Solanum tuberosum",
+      common_diseases: ["Scab"],
+      common_pests: ["Beetle"],
+      created_date: nowIso(),
+    },
   ],
   PlantDiagnosis: [],
   Treatment: [],
@@ -68,7 +84,6 @@ const readDb = () => {
   }
   try {
     const parsed = JSON.parse(raw);
-    // ensure enterprise collections exist
     parsed.DeviceSessions = parsed.DeviceSessions || [];
     return parsed;
   } catch {
@@ -78,12 +93,13 @@ const readDb = () => {
 
 const writeDb = (db) => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 
-const sortItems = (items, sortBy = '') => {
+const sortItems = (items, sortBy = "") => {
   if (!sortBy) return [...items];
-  const desc = sortBy.startsWith('-');
+  const desc = sortBy.startsWith("-");
   const field = desc ? sortBy.slice(1) : sortBy;
   return [...items].sort((a, b) => {
-    const av = a?.[field]; const bv = b?.[field];
+    const av = a?.[field];
+    const bv = b?.[field];
     if (av == null && bv == null) return 0;
     if (av == null) return 1;
     if (bv == null) return -1;
@@ -106,8 +122,10 @@ const logAuthEvent = (type, email) => {
 
 const hashPassword = async (password) => {
   const payload = new TextEncoder().encode(`verdent:${password}`);
-  const digest = await crypto.subtle.digest('SHA-256', payload);
-  return Array.from(new Uint8Array(digest)).map((x) => x.toString(16).padStart(2, '0')).join('');
+  const digest = await crypto.subtle.digest("SHA-256", payload);
+  return Array.from(new Uint8Array(digest))
+    .map((x) => x.toString(16).padStart(2, "0"))
+    .join("");
 };
 
 const upsertUserByEmail = (profile) => {
@@ -131,11 +149,11 @@ const getStoredUserByEmail = (email) => {
 };
 
 const entityApi = (entityName) => ({
-  async list(sortBy = '', limit) {
+  async list(sortBy = "", limit) {
     const items = sortItems(readDb()[entityName] || [], sortBy);
     return Number.isFinite(limit) ? items.slice(0, limit) : items;
   },
-  async filter(criteria = {}, sortBy = '', limit) {
+  async filter(criteria = {}, sortBy = "", limit) {
     const filtered = (readDb()[entityName] || []).filter((item) =>
       Object.entries(criteria).every(([k, v]) => item?.[k] === v)
     );
@@ -151,9 +169,7 @@ const entityApi = (entityName) => ({
   },
   async update(id, data) {
     const db = readDb();
-    db[entityName] = (db[entityName] || []).map((i) =>
-      (i.id === id ? { ...i, ...data, updated_date: nowIso() } : i)
-    );
+    db[entityName] = (db[entityName] || []).map((i) => (i.id === id ? { ...i, ...data, updated_date: nowIso() } : i));
     writeDb(db);
     return (db[entityName] || []).find((i) => i.id === id);
   },
@@ -189,7 +205,6 @@ const touchDeviceSession = (email) => {
 
   db.DeviceSessions = db.DeviceSessions || [];
 
-  // Remove duplicates for same user+device, keep latest
   db.DeviceSessions = db.DeviceSessions.filter(
     (s) => !(normalizeEmail(s.user_email) === normalizeEmail(email) && s.device_id === deviceId)
   );
@@ -206,7 +221,6 @@ const touchDeviceSession = (email) => {
 };
 
 const setSession = (user, { remember = true } = {}) => {
-  // Track active device session
   if (user?.email) touchDeviceSession(user.email);
 
   const safe = JSON.stringify(sanitizeUser(user));
@@ -224,15 +238,99 @@ const clearSession = () => {
   try { sessionStorage.removeItem(SESSION_KEY); } catch {}
 };
 
-const buildFarmAdvice = (prompt = '') => {
+/* ================= LOCAL "LLM" STUBS (STOPS CRASHES) ================= */
+
+const demoWeather = (loc = "Your area") => {
+  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const today = new Date();
+  const forecast = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    return {
+      day: days[d.getDay() === 0 ? 6 : d.getDay() - 1],
+      date: d.toISOString().split("T")[0],
+      high: 86 - i,
+      low: 72 - i,
+      conditions: i % 3 === 0 ? "Partly Cloudy" : i % 3 === 1 ? "Sunny" : "Light Rain",
+      precipitation_chance: i % 3 === 2 ? 35 : 10,
+      wind_speed: 8 + i,
+      icon: "sun",
+    };
+  });
+
+  return {
+    current: {
+      location: loc,
+      temperature: 84,
+      feels_like: 86,
+      humidity: 62,
+      wind_speed: 10,
+      wind_direction: "NE",
+      conditions: "Partly Cloudy",
+      description: "Warm with light clouds",
+      uv_index: 7,
+      pressure: 1012,
+    },
+    forecast,
+    alerts: [],
+    farming_conditions: {
+      overall: "good",
+      irrigation_advice: "Check soil moisture; irrigate early morning if needed.",
+      pest_risk: "Moderate — scout for aphids/leaf spots after humid periods.",
+      task_timing: "Best time: morning/evening to avoid heat stress.",
+    },
+  };
+};
+
+const buildFarmAdvice = (prompt = "") => {
   const lower = prompt.toLowerCase();
-  if (lower.includes('tomato') && lower.includes('blight')) return 'For blight on tomatoes, remove infected leaves, improve airflow, and consider a copper-based fungicide.';
-  if (lower.includes('aphid')) return 'For aphids, spray with neem oil, introduce ladybugs, and avoid excessive nitrogen fertilizer.';
-  return 'Maintain good soil health, monitor your crops regularly, and act early when symptoms appear.';
+  if (lower.includes("tomato") && lower.includes("blight"))
+    return "For blight on tomatoes: remove infected leaves, improve airflow, avoid overhead watering, and consider a copper-based fungicide.";
+  if (lower.includes("aphid"))
+    return "For aphids: spray neem oil/soap solution, introduce ladybugs, and reduce excess nitrogen fertilizer.";
+  return "Maintain soil health, monitor crops regularly, and act early when symptoms appear.";
 };
 
 export const appClient = {
   entities,
+
+  integrations: {
+    Core: {
+      /**
+       * Local-mode stub for InvokeLLM used across pages.
+       * - If a JSON schema for weather exists → return weather-shaped object.
+       * - Otherwise return a plain string.
+       */
+      async InvokeLLM({ prompt = "", response_json_schema } = {}) {
+        const p = String(prompt || "").toLowerCase();
+
+        // Weather widgets expect structured object
+        const looksLikeWeather =
+          response_json_schema?.properties?.current ||
+          p.includes("weather") ||
+          p.includes("forecast") ||
+          p.includes("real-time weather");
+
+        if (looksLikeWeather) {
+          // Best-effort "location"
+          const loc = "Your area";
+          return demoWeather(loc);
+        }
+
+        // Chat expects string
+        return buildFarmAdvice(prompt);
+      },
+
+      /**
+       * Local-mode upload: return blob URL for previews.
+       */
+      async UploadFile({ file }) {
+        if (!file) throw new Error("No file provided");
+        const file_url = URL.createObjectURL(file);
+        return { file_url };
+      },
+    },
+  },
 
   /* ================= ENTERPRISE ================= */
   enterprise: {
@@ -243,10 +341,7 @@ export const appClient = {
 
       return (db.DeviceSessions || [])
         .filter((s) => normalizeEmail(s.user_email) === normalized)
-        .map((s) => ({
-          ...s,
-          is_current_device: s.device_id === currentDevice,
-        }));
+        .map((s) => ({ ...s, is_current_device: s.device_id === currentDevice }));
     },
 
     async logoutOtherDevices(email) {
@@ -269,54 +364,56 @@ export const appClient = {
     async me() {
       const session = getSession();
       if (session) {
-        // update device last_active opportunistically
         if (session?.email) touchDeviceSession(session.email);
         return session;
       }
-      throw Object.assign(new Error('Authentication required'), { status: 401 });
+      throw Object.assign(new Error("Authentication required"), { status: 401 });
     },
 
-    async signInWithGoogle(profile) {
+    async signInWithGoogle(profile, { remember = true } = {}) {
+      if (!profile?.email) throw new Error("Missing email from provider");
+
       const user = upsertUserByEmail({
         full_name: profile.name,
         email: profile.email,
         avatar_url: profile.picture,
-        provider: 'google',
+        provider: profile.provider || "google",
       });
-      setSession(user, { remember: true });
-      logAuthEvent('google_login', profile.email);
+
+      setSession(user, { remember });
+      logAuthEvent(`${user.provider}_login`, profile.email);
       return sanitizeUser(user);
     },
 
-    async registerWithEmail({ fullName, email, password, accountType = 'attendee', remember = true }) {
+    async registerWithEmail({ fullName, email, password, accountType = "attendee", remember = true }) {
       const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail || !password || password.length < 8) {
-        throw new Error('Use a valid email and password with at least 8 characters.');
+        throw new Error("Use a valid email and password with at least 8 characters.");
       }
       if (getStoredUserByEmail(normalizedEmail)?.password_hash) {
-        throw new Error('An account already exists with this email. Please sign in.');
+        throw new Error("An account already exists with this email. Please sign in.");
       }
       const password_hash = await hashPassword(password);
       const user = upsertUserByEmail({
         full_name: fullName,
         email: normalizedEmail,
-        provider: 'email',
+        provider: "email",
         account_type: accountType,
         password_hash,
       });
       setSession(user, { remember });
-      logAuthEvent('register', normalizedEmail);
+      logAuthEvent("register", normalizedEmail);
       return sanitizeUser(user);
     },
 
     async signInWithEmail({ email, password, remember = true }) {
       const user = getStoredUserByEmail(email);
-      if (!user?.password_hash) throw new Error('No email/password account found. Please sign up first.');
+      if (!user?.password_hash) throw new Error("No email/password account found. Please sign up first.");
       const attemptedHash = await hashPassword(password);
-      if (attemptedHash !== user.password_hash) throw new Error('Invalid email or password.');
+      if (attemptedHash !== user.password_hash) throw new Error("Invalid email or password.");
       const updated = upsertUserByEmail({ ...user, last_login_date: nowIso() });
       setSession(updated, { remember });
-      logAuthEvent('email_login', email);
+      logAuthEvent("email_login", email);
       return sanitizeUser(updated);
     },
 
@@ -328,12 +425,7 @@ export const appClient = {
     },
 
     logout(redirectTo) {
-      // remove persisted session
       clearSession();
-
-      // NOTE: we do NOT delete DeviceSessions here because it represents other devices too.
-      // If you want "log out everywhere", implement a new method for that.
-
       if (redirectTo) window.location.href = redirectTo;
     },
 
@@ -345,9 +437,7 @@ export const appClient = {
 
   users: {
     async inviteUser(email) {
-      return sanitizeUser(
-        upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', provider: 'invite' })
-      );
+      return sanitizeUser(upsertUserByEmail({ email, full_name: email.split("@")[0], role: "user", provider: "invite" }));
     },
   },
 

@@ -2,61 +2,84 @@ import { PublicClientApplication } from "@azure/msal-browser";
 import { appClient } from "@/api/appClient";
 
 /* =========================
-   Helpers
+   Small helpers
 ========================= */
 
-const normalizeUser = (profile) =>
-  appClient.auth.signInWithGoogle({
-    name: profile.name,
-    email: profile.email,
-    picture: profile.picture || "",
-  });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function waitFor(predicate, { timeoutMs = 6000, intervalMs = 100 } = {}) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    if (predicate()) return true;
+    await sleep(intervalMs);
+  }
+  return false;
+}
+
+const normalizeUser = (profile, provider) =>
+  appClient.auth.signInWithGoogle(
+    {
+      name: profile.name,
+      email: profile.email,
+      picture: profile.picture || "",
+      provider,
+    },
+    { remember: true }
+  );
 
 /* =========================
-   GOOGLE (Popup OAuth2 token client)
-   - Always opens popup (fixes "prompt not displayed")
+   GOOGLE (OAuth2 Token Client)
 ========================= */
 
-export function loginWithGoogle() {
+let googleTokenClient = null;
+
+export async function loginWithGoogle() {
+  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  if (!clientId) throw new Error("Missing VITE_GOOGLE_CLIENT_ID in your .env file");
+
+  // Ensure gsi script loaded (index.html already includes it)
+  const ok = await waitFor(() => !!window.google?.accounts?.oauth2, { timeoutMs: 8000 });
+  if (!ok) {
+    throw new Error("Google SDK not loaded. Confirm index.html has https://accounts.google.com/gsi/client");
+  }
+
   return new Promise((resolve, reject) => {
     try {
-      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-      if (!clientId) return reject(new Error("Missing VITE_GOOGLE_CLIENT_ID"));
+      if (!googleTokenClient) {
+        googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: "openid email profile",
+          callback: async (tokenResponse) => {
+            try {
+              if (tokenResponse?.error) throw new Error(tokenResponse.error);
 
-      if (!window.google?.accounts?.oauth2) {
-        return reject(
-          new Error("Google OAuth2 not loaded. Ensure gsi/client script is in index.html")
-        );
+              const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+              });
+
+              if (!res.ok) {
+                const txt = await res.text().catch(() => "");
+                throw new Error(`Failed to fetch Google user profile (${res.status}). ${txt}`);
+              }
+
+              const profile = await res.json();
+              if (!profile?.email) throw new Error("Google did not return an email (check consent + scopes).");
+
+              const user = await normalizeUser(
+                { name: profile.name, email: profile.email, picture: profile.picture },
+                "google"
+              );
+
+              resolve(user);
+            } catch (e) {
+              reject(e);
+            }
+          },
+        });
       }
 
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
-        client_id: clientId,
-        scope: "openid email profile",
-        callback: async (tokenResponse) => {
-          try {
-            if (tokenResponse?.error) throw new Error(tokenResponse.error);
-
-            const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-              headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-            });
-            if (!res.ok) throw new Error("Failed to fetch Google user profile");
-
-            const profile = await res.json();
-            const user = await normalizeUser({
-              name: profile.name,
-              email: profile.email,
-              picture: profile.picture,
-            });
-
-            resolve(user);
-          } catch (e) {
-            reject(e);
-          }
-        },
-      });
-
-      // Always show chooser
-      tokenClient.requestAccessToken({ prompt: "select_account" });
+      // Always show account chooser
+      googleTokenClient.requestAccessToken({ prompt: "select_account" });
     } catch (e) {
       reject(e);
     }
@@ -65,25 +88,24 @@ export function loginWithGoogle() {
 
 /* =========================
    MICROSOFT ENTRA (MSAL)
-   - Fixes uninitialized_public_client_application
 ========================= */
+
+const entraClientId = import.meta.env.VITE_ENTRA_CLIENT_ID;
+const tenant = import.meta.env.VITE_ENTRA_TENANT_ID || "common";
 
 const msalInstance = new PublicClientApplication({
   auth: {
-    clientId: import.meta.env.VITE_ENTRA_CLIENT_ID,
-    authority: `https://login.microsoftonline.com/${import.meta.env.VITE_ENTRA_TENANT_ID || "common"}`,
+    clientId: entraClientId || "MISSING",
+    authority: `https://login.microsoftonline.com/${tenant}`,
     redirectUri: import.meta.env.VITE_OAUTH_REDIRECT || window.location.origin,
   },
-  cache: {
-    cacheLocation: "localStorage",
-    storeAuthStateInCookie: false,
-  },
+  cache: { cacheLocation: "localStorage" },
 });
 
 let msalInitPromise = null;
 
 async function ensureMsalInitialized() {
-  if (!import.meta.env.VITE_ENTRA_CLIENT_ID) throw new Error("Missing VITE_ENTRA_CLIENT_ID");
+  if (!entraClientId) throw new Error("Missing VITE_ENTRA_CLIENT_ID in your .env file");
   if (!msalInitPromise) msalInitPromise = msalInstance.initialize();
   await msalInitPromise;
 }
@@ -97,30 +119,29 @@ export async function loginWithMicrosoft() {
   });
 
   const account = result.account;
-  if (!account?.username) throw new Error("Microsoft login did not return an account");
+  if (!account?.username) throw new Error("Microsoft login did not return an email/username.");
 
-  return normalizeUser({
-    name: account.name || account.username,
-    email: account.username,
-    picture: "",
-  });
+  return normalizeUser(
+    { name: account.name || account.username, email: account.username, picture: "" },
+    "microsoft"
+  );
 }
 
 /* =========================
-   FACEBOOK (SDK init inside JS)
+   FACEBOOK (SDK)
 ========================= */
 
 let fbInitialized = false;
 
-function initFacebook() {
-  if (fbInitialized) return;
-
+async function initFacebook() {
   const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
-  if (!appId) throw new Error("Missing VITE_FACEBOOK_APP_ID");
+  if (!appId) throw new Error("Missing VITE_FACEBOOK_APP_ID in your .env file");
 
-  if (!window.FB) {
-    throw new Error("Facebook SDK not loaded. Ensure SDK script is in index.html");
-  }
+  // index.html includes the FB SDK script
+  const ok = await waitFor(() => !!window.FB, { timeoutMs: 8000 });
+  if (!ok) throw new Error("Facebook SDK not loaded. Confirm index.html has connect.facebook.net sdk.js");
+
+  if (fbInitialized) return;
 
   window.FB.init({
     appId,
@@ -132,36 +153,36 @@ function initFacebook() {
   fbInitialized = true;
 }
 
-export function loginWithFacebook() {
+export async function loginWithFacebook() {
+  await initFacebook();
+
   return new Promise((resolve, reject) => {
-    try {
-      initFacebook();
+    window.FB.login(
+      function (response) {
+        if (!response.authResponse) return reject(new Error("Facebook login cancelled"));
 
-      window.FB.login(
-        function (response) {
-          if (!response.authResponse) return reject(new Error("Facebook login cancelled"));
-
-          window.FB.api(
-            "/me",
-            { fields: "name,email,picture" },
-            async function (userInfo) {
-              try {
-                const user = await normalizeUser({
-                  name: userInfo.name,
-                  email: userInfo.email,
-                  picture: userInfo.picture?.data?.url,
-                });
-                resolve(user);
-              } catch (e) {
-                reject(e);
+        window.FB.api(
+          "/me",
+          { fields: "name,email,picture" },
+          async function (userInfo) {
+            try {
+              if (!userInfo?.email) {
+                throw new Error("Facebook did not return an email (your FB app must request email permission).");
               }
+
+              const user = await normalizeUser(
+                { name: userInfo.name, email: userInfo.email, picture: userInfo.picture?.data?.url },
+                "facebook"
+              );
+
+              resolve(user);
+            } catch (e) {
+              reject(e);
             }
-          );
-        },
-        { scope: "public_profile,email", auth_type: "rerequest" }
-      );
-    } catch (e) {
-      reject(e);
-    }
+          }
+        );
+      },
+      { scope: "public_profile,email", auth_type: "rerequest" }
+    );
   });
 }
