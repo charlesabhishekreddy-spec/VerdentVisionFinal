@@ -5,53 +5,46 @@ import { appClient } from '@/api/appClient';
 import { pagesConfig } from '@/pages.config';
 
 export default function NavigationTracker() {
-    const location = useLocation();
-    const { isAuthenticated } = useAuth();
-    const { Pages, mainPage } = pagesConfig;
+  const location = useLocation();
+  const { isAuthenticated } = useAuth();
+  const { Pages, mainPage } = pagesConfig;
+  const mainPageKey = mainPage ?? Object.keys(Pages)[0];
 
-    const mainPageKey = mainPage ?? Object.keys(Pages)[0];
+  useEffect(() => {
+    window.parent?.postMessage({
+      type: "app_changed_url",
+      url: window.location.href
+    }, '*');
+  }, [location]);
 
-    /* ---------------- POST URL TO PARENT ---------------- */
-    useEffect(() => {
-        window.parent?.postMessage(
-            {
-                type: "app_changed_url",
-                url: window.location.href,
-            },
-            '*'
-        );
-    }, [location]);
+  useEffect(() => {
+    const pathname = location.pathname;
+    let pageName;
 
-    /* ---------------- SAFE USER ACTIVITY LOGGING ---------------- */
-    useEffect(() => {
-        const pathname = location.pathname;
+    if (pathname === '/' || pathname === '') {
+      pageName = mainPageKey;
+    } else {
+      const pathSegment = pathname.replace(/^\//, '').split('/')[0];
+      const matchedKey = Object.keys(Pages).find(
+        key => key.toLowerCase() === pathSegment.toLowerCase()
+      );
+      pageName = matchedKey || null;
+    }
 
-        let pageName;
+    // ✅ do not crash app if logging isn't implemented
+    if (!isAuthenticated || !pageName) return;
 
-        if (pathname === '/' || pathname === '') {
-            pageName = mainPageKey;
-        } else {
-            const pathSegment = pathname.replace(/^\//, '').split('/')[0];
+    try {
+      // Prefer entity ActivityLog (exists in your appClient)
+      appClient.entities?.ActivityLog?.create?.({
+        page: pageName,
+        type: "navigate",
+        created_date: new Date().toISOString(),
+      }).catch?.(() => {});
+    } catch {
+      // Silent
+    }
+  }, [location, isAuthenticated, Pages, mainPageKey]);
 
-            const matchedKey = Object.keys(Pages).find(
-                key => key.toLowerCase() === pathSegment.toLowerCase()
-            );
-
-            pageName = matchedKey || null;
-        }
-
-        // ✅ SAFE GUARD (prevents crash)
-        if (
-            isAuthenticated &&
-            pageName &&
-            appClient?.appLogs?.logUserInApp
-        ) {
-            appClient.appLogs
-                .logUserInApp(pageName)
-                .catch(() => {});
-        }
-
-    }, [location, isAuthenticated, Pages, mainPageKey]);
-
-    return null;
+  return null;
 }

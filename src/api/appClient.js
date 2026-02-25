@@ -2,6 +2,26 @@ const STORAGE_KEY = 'verdent_vision_db_v3';
 const SESSION_KEY = 'verdent_vision_session_v2';
 const ADMIN_EMAIL = 'charlesabhishekreddy@gmail.com';
 
+/* ================= ENTERPRISE SESSION HELPERS ================= */
+
+const DEVICE_KEY = "verdent_device_id";
+
+const getDeviceId = () => {
+  let id = localStorage.getItem(DEVICE_KEY);
+  if (!id) {
+    id = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    localStorage.setItem(DEVICE_KEY, id);
+  }
+  return id;
+};
+
+const getDeviceInfo = () => ({
+  id: getDeviceId(),
+  userAgent: navigator.userAgent,
+  platform: navigator.platform,
+  created_at: new Date().toISOString(),
+});
+
 const nowIso = () => new Date().toISOString();
 const makeId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -22,11 +42,21 @@ const seedDatabase = () => ({
   ],
   AuthEvent: [],
   ActivityLog: [],
+  DeviceSessions: [],
+
   PlantDatabase: [
     { id: 'p1', common_name: 'Tomato', scientific_name: 'Solanum lycopersicum', common_diseases: ['Early Blight', 'Late Blight'], common_pests: ['Aphids'], created_date: nowIso() },
     { id: 'p2', common_name: 'Potato', scientific_name: 'Solanum tuberosum', common_diseases: ['Scab'], common_pests: ['Beetle'], created_date: nowIso() },
   ],
-  PlantDiagnosis: [], Treatment: [], Task: [], PestPrediction: [], WeatherLog: [], OutbreakReport: [], DiagnosisFeedback: [], ForumPost: [], CropPlan: [],
+  PlantDiagnosis: [],
+  Treatment: [],
+  Task: [],
+  PestPrediction: [],
+  WeatherLog: [],
+  OutbreakReport: [],
+  DiagnosisFeedback: [],
+  ForumPost: [],
+  CropPlan: [],
 });
 
 const readDb = () => {
@@ -37,11 +67,15 @@ const readDb = () => {
     return db;
   }
   try {
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // ensure enterprise collections exist
+    parsed.DeviceSessions = parsed.DeviceSessions || [];
+    return parsed;
   } catch {
     return seedDatabase();
   }
 };
+
 const writeDb = (db) => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 
 const sortItems = (items, sortBy = '') => {
@@ -81,9 +115,11 @@ const upsertUserByEmail = (profile) => {
   const email = normalizeEmail(profile.email);
   const role = getRoleForEmail(email);
   const found = (db.User || []).find((u) => normalizeEmail(u.email) === email);
+
   const user = found
     ? { ...found, ...profile, email, role, updated_date: nowIso() }
     : { id: makeId(), created_date: nowIso(), role, email, ...profile };
+
   db.User = [user, ...(db.User || []).filter((u) => normalizeEmail(u.email) !== email)];
   writeDb(db);
   return user;
@@ -100,7 +136,9 @@ const entityApi = (entityName) => ({
     return Number.isFinite(limit) ? items.slice(0, limit) : items;
   },
   async filter(criteria = {}, sortBy = '', limit) {
-    const filtered = (readDb()[entityName] || []).filter((item) => Object.entries(criteria).every(([k, v]) => item?.[k] === v));
+    const filtered = (readDb()[entityName] || []).filter((item) =>
+      Object.entries(criteria).every(([k, v]) => item?.[k] === v)
+    );
     const items = sortItems(filtered, sortBy);
     return Number.isFinite(limit) ? items.slice(0, limit) : items;
   },
@@ -113,7 +151,9 @@ const entityApi = (entityName) => ({
   },
   async update(id, data) {
     const db = readDb();
-    db[entityName] = (db[entityName] || []).map((i) => (i.id === id ? { ...i, ...data, updated_date: nowIso() } : i));
+    db[entityName] = (db[entityName] || []).map((i) =>
+      (i.id === id ? { ...i, ...data, updated_date: nowIso() } : i)
+    );
     writeDb(db);
     return (db[entityName] || []).find((i) => i.id === id);
   },
@@ -126,8 +166,11 @@ const entityApi = (entityName) => ({
   },
 });
 
+const entities = new Proxy({}, { get: (_t, prop) => entityApi(prop) });
+
+/* ================= SESSION STORAGE ================= */
+
 const getSession = () => {
-  // Prefer sessionStorage (non-persistent) over localStorage (persistent)
   try {
     const s = sessionStorage.getItem(SESSION_KEY);
     if (s) return JSON.parse(s);
@@ -139,7 +182,33 @@ const getSession = () => {
   return null;
 };
 
+const touchDeviceSession = (email) => {
+  const db = readDb();
+  const deviceId = getDeviceId();
+  const now = nowIso();
+
+  db.DeviceSessions = db.DeviceSessions || [];
+
+  // Remove duplicates for same user+device, keep latest
+  db.DeviceSessions = db.DeviceSessions.filter(
+    (s) => !(normalizeEmail(s.user_email) === normalizeEmail(email) && s.device_id === deviceId)
+  );
+
+  db.DeviceSessions.unshift({
+    id: makeId(),
+    user_email: normalizeEmail(email),
+    device_id: deviceId,
+    device_info: getDeviceInfo(),
+    last_active: now,
+  });
+
+  writeDb(db);
+};
+
 const setSession = (user, { remember = true } = {}) => {
+  // Track active device session
+  if (user?.email) touchDeviceSession(user.email);
+
   const safe = JSON.stringify(sanitizeUser(user));
   if (remember) {
     try { localStorage.setItem(SESSION_KEY, safe); } catch {}
@@ -162,16 +231,51 @@ const buildFarmAdvice = (prompt = '') => {
   return 'Maintain good soil health, monitor your crops regularly, and act early when symptoms appear.';
 };
 
-const entities = new Proxy({}, { get: (_t, prop) => entityApi(prop) });
-
 export const appClient = {
   entities,
+
+  /* ================= ENTERPRISE ================= */
+  enterprise: {
+    async listSessions(email) {
+      const db = readDb();
+      const normalized = normalizeEmail(email);
+      const currentDevice = getDeviceId();
+
+      return (db.DeviceSessions || [])
+        .filter((s) => normalizeEmail(s.user_email) === normalized)
+        .map((s) => ({
+          ...s,
+          is_current_device: s.device_id === currentDevice,
+        }));
+    },
+
+    async logoutOtherDevices(email) {
+      const db = readDb();
+      const normalized = normalizeEmail(email);
+      const currentDevice = getDeviceId();
+
+      db.DeviceSessions = (db.DeviceSessions || []).filter((s) => {
+        if (normalizeEmail(s.user_email) !== normalized) return true;
+        return s.device_id === currentDevice;
+      });
+
+      writeDb(db);
+      return true;
+    },
+  },
+
+  /* ================= AUTH ================= */
   auth: {
     async me() {
       const session = getSession();
-      if (session) return session;
+      if (session) {
+        // update device last_active opportunistically
+        if (session?.email) touchDeviceSession(session.email);
+        return session;
+      }
       throw Object.assign(new Error('Authentication required'), { status: 401 });
     },
+
     async signInWithGoogle(profile) {
       const user = upsertUserByEmail({
         full_name: profile.name,
@@ -183,6 +287,7 @@ export const appClient = {
       logAuthEvent('google_login', profile.email);
       return sanitizeUser(user);
     },
+
     async registerWithEmail({ fullName, email, password, accountType = 'attendee', remember = true }) {
       const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail || !password || password.length < 8) {
@@ -203,6 +308,7 @@ export const appClient = {
       logAuthEvent('register', normalizedEmail);
       return sanitizeUser(user);
     },
+
     async signInWithEmail({ email, password, remember = true }) {
       const user = getStoredUserByEmail(email);
       if (!user?.password_hash) throw new Error('No email/password account found. Please sign up first.');
@@ -213,26 +319,38 @@ export const appClient = {
       logAuthEvent('email_login', email);
       return sanitizeUser(updated);
     },
+
     async updateMe(updateData) {
       const current = await this.me();
       const user = upsertUserByEmail({ ...current, ...updateData });
       setSession(user, { remember: true });
       return sanitizeUser(user);
     },
+
     logout(redirectTo) {
+      // remove persisted session
       clearSession();
+
+      // NOTE: we do NOT delete DeviceSessions here because it represents other devices too.
+      // If you want "log out everywhere", implement a new method for that.
+
       if (redirectTo) window.location.href = redirectTo;
     },
+
     redirectToLogin(redirectTo) {
       const next = encodeURIComponent(redirectTo || window.location.href);
       window.location.href = `/login?next=${next}`;
     },
   },
+
   users: {
     async inviteUser(email) {
-      return sanitizeUser(upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', provider: 'invite' }));
+      return sanitizeUser(
+        upsertUserByEmail({ email, full_name: email.split('@')[0], role: 'user', provider: 'invite' })
+      );
     },
   },
+
   ai: {
     async getFarmAdvice(prompt) {
       return { answer: buildFarmAdvice(prompt) };
