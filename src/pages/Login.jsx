@@ -299,7 +299,7 @@ export default function Login() {
           <h1 className="text-5xl font-bold leading-tight">
             Welcome back.
             <br />
-            Your farm management awaits.
+            Your farm awaits.
           </h1>
           <p className="text-lg text-blue-100">
             Sign in to discover updates, connect with communities, and never miss what matters.
