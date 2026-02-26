@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

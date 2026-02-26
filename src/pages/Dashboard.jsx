@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Activity, TrendingUp, Download, FileText } from "lucide-react";
+import { Activity, Download, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 export default function Dashboard() {

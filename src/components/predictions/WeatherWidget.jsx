@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, MapPin, RefreshCw, Thermometer, Droplets, Wind, Cloud } from "lucide-react";
+import { Loader2, MapPin, RefreshCw, Thermometer, Droplets, Wind } from "lucide-react";
 
 export default function WeatherWidget({ onWeatherData }) {
   const [weather, setWeather] = useState(null);
-  const [location, setLocation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -82,10 +81,9 @@ Be precise and use real current data.`,
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        setLocation({ lat: latitude, lon: longitude });
         fetchWeather(latitude, longitude);
       },
-      (err) => {
+      (_err) => {
         setError("Unable to get your location. Please enable location services.");
         setIsLoading(false);
       },

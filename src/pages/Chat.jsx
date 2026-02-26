@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -88,7 +88,7 @@ Be conversational, supportive, and encouraging.`;
         role: "assistant",
         content: response
       }]);
-    } catch (error) {
+    } catch {
       setMessages(prev => [...prev, {
         role: "assistant",
         content: "I apologize, but I encountered an error. Please try again."

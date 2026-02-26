@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Users, TrendingUp } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import PostList from "../components/community/PostList.jsx";
 import PostForm from "../components/community/PostForm.jsx";
 import CommunityStats from "../components/community/CommunityStats.jsx";

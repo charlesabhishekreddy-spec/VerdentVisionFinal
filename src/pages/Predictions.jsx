@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,6 @@ import { AlertTriangle, CloudRain, Loader2, RefreshCw, TrendingUp } from "lucide
 import PredictionCard from "../components/predictions/PredictionCard.jsx";
 import WeatherInput from "../components/predictions/WeatherInput.jsx";
 import RiskSummary from "../components/predictions/RiskSummary.jsx";
-import WeatherWidget from "../components/predictions/WeatherWidget.jsx";
 import WeatherDashboard from "../components/weather/WeatherDashboard.jsx";
 import OutbreakReportForm from "../components/predictions/OutbreakReportForm.jsx";
 import OutbreakList from "../components/predictions/OutbreakList.jsx";
@@ -16,7 +15,7 @@ export default function Predictions() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showWeatherInput, setShowWeatherInput] = useState(false);
   const [showReportForm, setShowReportForm] = useState(false);
-  const [currentWeather, setCurrentWeather] = useState(null);
+  const [currentWeather] = useState(null);
   const queryClient = useQueryClient();
 
   const { data: predictions = [] } = useQuery({

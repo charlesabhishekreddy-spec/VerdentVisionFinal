@@ -1,8 +1,7 @@
-import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, AlertCircle, CheckCircle, Clock } from "lucide-react";
-import { format, isAfter, isBefore } from "date-fns";
+import { format, isBefore } from "date-fns";
 
 export default function TaskReports({ tasks }) {
   const today = new Date();

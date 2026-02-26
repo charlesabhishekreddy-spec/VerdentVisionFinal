@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   Camera, MessageCircle, Calendar, Sprout, Activity, 
-  TrendingUp, AlertCircle, CheckCircle, Clock
+  TrendingUp, Clock
 } from "lucide-react";
 import { format } from "date-fns";
 import WeatherDashboard from "../components/weather/WeatherDashboard";

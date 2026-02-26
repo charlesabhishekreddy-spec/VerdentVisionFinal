@@ -131,11 +131,11 @@ const hashPassword = async (password) => {
 const upsertUserByEmail = (profile) => {
   const db = readDb();
   const email = normalizeEmail(profile.email);
-  const role = getRoleForEmail(email);
   const found = (db.User || []).find((u) => normalizeEmail(u.email) === email);
+  const role = found?.role || getRoleForEmail(email);
 
   const user = found
-    ? { ...found, ...profile, email, role, updated_date: nowIso() }
+    ? { ...found, ...profile, email, role, id: found.id, updated_date: nowIso() }
     : { id: makeId(), created_date: nowIso(), role, email, ...profile };
 
   db.User = [user, ...(db.User || []).filter((u) => normalizeEmail(u.email) !== email)];
@@ -301,7 +301,7 @@ export const appClient = {
        * - If a JSON schema for weather exists → return weather-shaped object.
        * - Otherwise return a plain string.
        */
-      async InvokeLLM({ prompt = "", response_json_schema } = {}) {
+      async InvokeLLM(/** @type {any} */ { prompt = "", response_json_schema } = {}) {
         const p = String(prompt || "").toLowerCase();
 
         // Weather widgets expect structured object
@@ -390,7 +390,9 @@ export const appClient = {
       if (!normalizedEmail || !password || password.length < 8) {
         throw new Error("Use a valid email and password with at least 8 characters.");
       }
-      if (getStoredUserByEmail(normalizedEmail)?.password_hash) {
+      const existingUser = getStoredUserByEmail(normalizedEmail);
+      const isInvitedAccount = existingUser?.provider === "invite" && !existingUser?.password_hash;
+      if (existingUser && !isInvitedAccount) {
         throw new Error("An account already exists with this email. Please sign in.");
       }
       const password_hash = await hashPassword(password);
@@ -419,7 +421,8 @@ export const appClient = {
 
     async updateMe(updateData) {
       const current = await this.me();
-      const user = upsertUserByEmail({ ...current, ...updateData });
+      const { email, role, id, password_hash, provider, ...safeUpdateData } = updateData || {};
+      const user = upsertUserByEmail({ ...current, ...safeUpdateData });
       setSession(user, { remember: true });
       return sanitizeUser(user);
     },

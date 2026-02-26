@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, LogOut, Activity, Award, Sprout } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { User, LogOut, Activity, Award } from "lucide-react";
 import { createPageUrl } from "@/utils";
 import FarmPreferences from "../components/profile/FarmPreferences.jsx";
 import DiagnosisHistory from "../components/profile/DiagnosisHistory.jsx";
@@ -12,7 +11,6 @@ import TreatmentHistory from "../components/profile/TreatmentHistory.jsx";
 
 export default function Profile() {
   const [user, setUser] = useState(null);
-  const navigate = useNavigate();
 
   useEffect(() => {
     appClient.auth.me().then(setUser).catch(() => {});
@@ -36,27 +34,6 @@ export default function Profile() {
   const handleLogout = () => {
     appClient.auth.logout(createPageUrl("Home"));
   };
-
-  const achievements = [
-    {
-      title: "First Diagnosis",
-      description: "Completed your first plant diagnosis",
-      earned: diagnoses.length > 0,
-      icon: Sprout
-    },
-    {
-      title: "Task Master",
-      description: "Completed 10 farming tasks",
-      earned: tasks.filter(t => t.status === 'completed').length >= 10,
-      icon: Activity
-    },
-    {
-      title: "Community Helper",
-      description: "Posted in the community forum",
-      earned: posts.length > 0,
-      icon: Award
-    }
-  ];
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">

@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Home, Camera, MessageCircle, Calendar, Users, Sprout, User, BookOpen, CloudRain, Bug, Shield } from "lucide-react";
 import { appClient } from "@/api/appClient";
 
-export default function Layout({ children, currentPageName }) {
+export default function Layout({ children, currentPageName: _currentPageName }) {
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(null);
 

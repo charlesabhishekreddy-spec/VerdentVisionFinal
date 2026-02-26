@@ -1,9 +1,9 @@
-import React, { useState, useRef } from "react";
+import { useState, useRef } from "react";
 import { appClient } from "@/api/appClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, Loader2, AlertCircle, CheckCircle, Leaf, Droplet } from "lucide-react";
+import { Camera, Upload, Loader2, AlertCircle, Leaf } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import DiagnosisResult from "../components/diagnose/DiagnosisResult.jsx";
 import TreatmentRecommendations from "../components/diagnose/TreatmentRecommendations.jsx";

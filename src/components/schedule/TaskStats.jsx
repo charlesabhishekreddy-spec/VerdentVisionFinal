@@ -1,6 +1,5 @@
-import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Clock, Play, XCircle } from "lucide-react";
+import { CheckCircle, Clock, Play } from "lucide-react";
 
 export default function TaskStats({ tasks }) {
   const stats = [

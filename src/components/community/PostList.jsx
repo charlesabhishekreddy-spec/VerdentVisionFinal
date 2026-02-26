@@ -1,4 +1,3 @@
-import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Heart, CheckCircle, User } from "lucide-react";
 import { format } from "date-fns";

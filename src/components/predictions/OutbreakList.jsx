@@ -1,4 +1,3 @@
-import React from "react";
 import { appClient } from "@/api/appClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";

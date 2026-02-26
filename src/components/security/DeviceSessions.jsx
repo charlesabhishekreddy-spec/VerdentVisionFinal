@@ -16,7 +16,7 @@ export default function DeviceSessions() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [user?.email]);
 
   const logoutOthers = async () => {

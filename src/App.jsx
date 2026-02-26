@@ -12,6 +12,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
+import ForgotPassword from '@/auth/ForgotPassword';
 
 const { Pages, Layout, mainPage } = pagesConfig;
 const mainPageKey = mainPage ?? Object.keys(Pages)[0];
@@ -38,6 +39,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       {!isAuthenticated ? (
         <Route path="*" element={<Navigate to="/login" replace />} />

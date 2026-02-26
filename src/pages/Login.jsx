@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Sprout, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -136,7 +136,7 @@ function AccountChooserModal({ open, onClose, providers, lastProvider, onSelect 
 }
 
 export default function Login() {
-  const { signInWithEmail, isAuthenticated } = useAuth();
+  const { signInWithEmail, isAuthenticated, checkAppState } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
 
@@ -167,7 +167,18 @@ export default function Login() {
     }
   });
 
-  const nextPath = useMemo(() => decodeURIComponent(params.get("next") || "/"), [params]);
+  const nextPath = useMemo(() => {
+    const raw = decodeURIComponent(params.get("next") || "/");
+    if (!raw) return "/";
+    if (raw.startsWith("/")) return raw;
+    try {
+      const url = new URL(raw, window.location.origin);
+      if (url.origin !== window.location.origin) return "/";
+      return `${url.pathname}${url.search}${url.hash}` || "/";
+    } catch {
+      return "/";
+    }
+  }, [params]);
 
   useEffect(() => {
     if (isAuthenticated) navigate(nextPath, { replace: true });
@@ -194,6 +205,7 @@ export default function Login() {
     setLoadingOauth(true);
     try {
       await loginWithGoogle();
+      await checkAppState();
       setProviderMemory("google");
       redirectWithSuccess();
     } catch (e) {
@@ -208,6 +220,7 @@ export default function Login() {
     setLoadingOauth(true);
     try {
       await loginWithMicrosoft();
+      await checkAppState();
       setProviderMemory("microsoft");
       redirectWithSuccess();
     } catch (e) {
@@ -222,6 +235,7 @@ export default function Login() {
     setLoadingOauth(true);
     try {
       await loginWithFacebook();
+      await checkAppState();
       setProviderMemory("facebook");
       redirectWithSuccess();
     } catch (e) {
