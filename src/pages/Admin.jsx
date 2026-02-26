@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { appClient } from "@/api/appClient";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shield, UserPlus, Users, Activity } from "lucide-react";
@@ -11,53 +11,47 @@ import AdminStats from "../components/admin/AdminStats.jsx";
 
 export default function Admin() {
   const [showInviteForm, setShowInviteForm] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
 
-  const { data: users = [], isLoading } = useQuery({
-    queryKey: ['all-users'],
-    queryFn: async () => {
-      const user = await appClient.auth.me();
-      setCurrentUser(user);
+  const { data: currentUser, isLoading: loadingUser } = useQuery({
+    queryKey: ["admin-current-user"],
+    queryFn: () => appClient.auth.me(),
+  });
 
-      if (user.role !== 'admin') {
-        setError('Admin access is restricted. Only charlesabhishekreddy@gmail.com has admin rights.');
-        return [];
-      }
-      return appClient.entities.User.list('-created_date', 100);
-    },
+  const isAdmin = currentUser?.role === "admin";
+
+  const { data: users = [], isLoading: loadingUsers } = useQuery({
+    queryKey: ["all-users"],
+    queryFn: () => appClient.users.listUsers(200),
+    enabled: isAdmin,
   });
 
   const { data: allDiagnoses = [] } = useQuery({
-    queryKey: ['all-diagnoses-admin'],
-    queryFn: () => appClient.entities.PlantDiagnosis.list('-created_date', 100),
-    enabled: currentUser?.role === 'admin',
+    queryKey: ["all-diagnoses-admin"],
+    queryFn: () => appClient.entities.PlantDiagnosis.list("-created_date", 200),
+    enabled: isAdmin,
   });
 
   const { data: allTasks = [] } = useQuery({
-    queryKey: ['all-tasks-admin'],
-    queryFn: () => appClient.entities.Task.list('-created_date', 100),
-    enabled: currentUser?.role === 'admin',
+    queryKey: ["all-tasks-admin"],
+    queryFn: () => appClient.entities.Task.list("-created_date", 200),
+    enabled: isAdmin,
   });
 
   const { data: allPosts = [] } = useQuery({
-    queryKey: ['all-posts-admin'],
-    queryFn: () => appClient.entities.ForumPost.list('-created_date', 100),
-    enabled: currentUser?.role === 'admin',
+    queryKey: ["all-posts-admin"],
+    queryFn: () => appClient.entities.ForumPost.list("-created_date", 200),
+    enabled: isAdmin,
   });
 
-  if (error) {
-    return (
-      <div className="max-w-2xl mx-auto mt-12">
-        <Alert className="glass-panel border-amber-300/40 bg-amber-100/40 text-amber-900">
-          <Shield className="h-4 w-4" />
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const updateUserMutation = useMutation({
+    mutationFn: ({ userId, updates }) => appClient.users.updateUser(userId, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-users"] });
+    },
+  });
 
-  if (isLoading) {
+  if (loadingUser || (isAdmin && loadingUsers)) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
@@ -68,6 +62,29 @@ export default function Admin() {
     );
   }
 
+  if (!isAdmin) {
+    return (
+      <div className="max-w-2xl mx-auto mt-12">
+        <Alert className="glass-panel border-amber-300/40 bg-amber-100/40 text-amber-900">
+          <Shield className="h-4 w-4" />
+          <AlertDescription>
+            Admin access is restricted. Only users with admin role can access this panel.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  const toggleRole = (user) => {
+    const nextRole = user.role === "admin" ? "user" : "admin";
+    updateUserMutation.mutate({ userId: user.id, updates: { role: nextRole } });
+  };
+
+  const toggleStatus = (user) => {
+    const nextStatus = user.account_status === "suspended" ? "active" : "suspended";
+    updateUserMutation.mutate({ userId: user.id, updates: { account_status: nextStatus } });
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <div className="glass-panel p-6 flex items-center justify-between">
@@ -75,14 +92,16 @@ export default function Admin() {
           <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
             <Shield className="w-8 h-8 text-blue-600" /> Admin Controls
           </h2>
-          <p className="text-slate-600 mt-1">Manage users, monitor activity, and oversee the platform.</p>
+          <p className="text-slate-600 mt-1">
+            Manage user roles, account status, and operational activity with enterprise controls.
+          </p>
         </div>
         <Button onClick={() => setShowInviteForm(!showInviteForm)} className="bg-blue-600/90 hover:bg-blue-700 gap-2">
           <UserPlus className="w-5 h-5" /> Invite User
         </Button>
       </div>
 
-      {showInviteForm && <InviteUserForm onClose={() => setShowInviteForm(false)} />}
+      {showInviteForm ? <InviteUserForm onClose={() => setShowInviteForm(false)} /> : null}
 
       <AdminStats users={users} diagnoses={allDiagnoses} tasks={allTasks} posts={allPosts} />
 
@@ -93,7 +112,14 @@ export default function Admin() {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <UserList users={users} currentUser={currentUser} />
+          <UserList
+            users={users}
+            currentUser={currentUser}
+            onToggleRole={toggleRole}
+            onToggleStatus={toggleStatus}
+            updatingUserId={updateUserMutation.variables?.userId}
+            isUpdating={updateUserMutation.isPending}
+          />
         </CardContent>
       </Card>
     </div>

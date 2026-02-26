@@ -56,7 +56,9 @@ export default function DeviceSessions() {
             >
               <div className="font-medium text-slate-900 flex items-center justify-between">
                 <span>{s.device_info?.platform || "Device"}</span>
-                {s.is_current_device ? (
+                {s.is_current_session ? (
+                  <span className="text-xs text-emerald-700 font-semibold">Current session</span>
+                ) : s.is_current_device ? (
                   <span className="text-xs text-emerald-700 font-semibold">This device</span>
                 ) : (
                   <span className="text-xs text-slate-500">Other</span>
@@ -68,6 +70,11 @@ export default function DeviceSessions() {
               <div className="text-xs text-slate-400 mt-2">
                 Last active: {s.last_active}
               </div>
+              {s.expires_at ? (
+                <div className="text-xs text-slate-400 mt-1">
+                  Expires: {s.expires_at}
+                </div>
+              ) : null}
             </div>
           ))}
         </div>

@@ -1,20 +1,17 @@
-import { useState, useEffect } from "react";
 import { appClient } from "@/api/appClient";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { User, LogOut, Activity, Award } from "lucide-react";
-import { createPageUrl } from "@/utils";
+import { useAuth } from "@/lib/AuthContext";
 import FarmPreferences from "../components/profile/FarmPreferences.jsx";
 import DiagnosisHistory from "../components/profile/DiagnosisHistory.jsx";
 import TreatmentHistory from "../components/profile/TreatmentHistory.jsx";
+import DeviceSessions from "../components/security/DeviceSessions.jsx";
+import PasswordSecurityCard from "../components/security/PasswordSecurityCard.jsx";
 
 export default function Profile() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    appClient.auth.me().then(setUser).catch(() => {});
-  }, []);
+  const { user, logout } = useAuth();
 
   const { data: diagnoses = [] } = useQuery({
     queryKey: ['user-diagnoses'],
@@ -31,8 +28,8 @@ export default function Profile() {
     queryFn: () => appClient.entities.ForumPost.list('-created_date'),
   });
 
-  const handleLogout = () => {
-    appClient.auth.logout(createPageUrl("Home"));
+  const handleLogout = async () => {
+    await logout(true);
   };
 
   return (
@@ -89,14 +86,20 @@ export default function Profile() {
       {/* Treatment History */}
       <TreatmentHistory />
 
-      {/* Logout Button */}
+      {/* Security */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <PasswordSecurityCard />
+        <DeviceSessions />
+      </div>
+
+      {/* Logout */}
       <Button
         onClick={handleLogout}
         variant="outline"
         className="w-full border-red-300 text-red-600 hover:bg-red-50 gap-2"
       >
         <LogOut className="w-5 h-5" />
-        Logout
+        Log out
       </Button>
     </div>
   );

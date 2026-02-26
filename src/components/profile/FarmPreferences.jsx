@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { appClient } from "@/api/appClient";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,8 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sprout, Loader2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function FarmPreferences({ user }) {
+  const { updateProfile } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     farm_name: user?.farm_name || "",
@@ -22,6 +23,20 @@ export default function FarmPreferences({ user }) {
     notifications_enabled: user?.notifications_enabled !== false
   });
 
+  useEffect(() => {
+    setFormData({
+      farm_name: user?.farm_name || "",
+      location: user?.location || "",
+      farm_size: user?.farm_size || "",
+      primary_crops: user?.primary_crops?.join(", ") || "",
+      farming_method: user?.farming_method || "conventional",
+      soil_type: user?.soil_type || "",
+      climate_zone: user?.climate_zone || "",
+      years_experience: user?.years_experience || 0,
+      notifications_enabled: user?.notifications_enabled !== false
+    });
+  }, [user]);
+
   const queryClient = useQueryClient();
 
   const updateMutation = useMutation({
@@ -30,7 +45,7 @@ export default function FarmPreferences({ user }) {
         ...data,
         primary_crops: data.primary_crops.split(",").map(c => c.trim()).filter(Boolean)
       };
-      await appClient.auth.updateMe(updateData);
+      await updateProfile(updateData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries(['user']);

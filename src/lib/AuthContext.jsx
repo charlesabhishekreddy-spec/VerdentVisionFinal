@@ -1,33 +1,27 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
-import { appClient } from '@/api/appClient';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { appClient } from "@/api/appClient";
 
 const AuthContext = createContext();
+const appPublicSettings = { id: "verdent-local", public_settings: { auth_required: true } };
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Canonical session-restore/loading flag
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-
-  // Kept for compatibility with App.jsx gate
-  const [isLoadingPublicSettings] = useState(false);
-
   const [authError, setAuthError] = useState(null);
-  const [appPublicSettings] = useState({ id: 'verdent-local', public_settings: { auth_required: true } });
+
+  // Compatibility with existing app gate checks.
+  const [isLoadingPublicSettings] = useState(false);
 
   const checkAppState = useCallback(async () => {
     setIsLoadingAuth(true);
     try {
       const currentUser = await appClient.auth.me();
       setUser(currentUser);
-      setIsAuthenticated(true);
       setAuthError(null);
       return currentUser;
     } catch (error) {
       setUser(null);
-      setIsAuthenticated(false);
-      setAuthError({ type: 'auth_required', message: error?.message || 'Authentication required' });
+      setAuthError({ type: "auth_required", message: error?.message || "Authentication required." });
       return null;
     } finally {
       setIsLoadingAuth(false);
@@ -38,74 +32,108 @@ export const AuthProvider = ({ children }) => {
     checkAppState();
   }, [checkAppState]);
 
-  const signInWithGoogle = async (profile) => {
-    const currentUser = await appClient.auth.signInWithGoogle(profile);
-    setUser(currentUser);
-    setIsAuthenticated(true);
-    setAuthError(null);
-    return currentUser;
-  };
-
-  const signInWithEmail = async (payload) => {
+  const signInWithEmail = useCallback(async (payload) => {
     const currentUser = await appClient.auth.signInWithEmail(payload);
     setUser(currentUser);
-    setIsAuthenticated(true);
     setAuthError(null);
     return currentUser;
-  };
+  }, []);
 
-  const registerWithEmail = async (payload) => {
+  const signInWithSocial = useCallback(async (payload) => {
+    const currentUser = await appClient.auth.signInWithSocial(payload);
+    setUser(currentUser);
+    setAuthError(null);
+    return currentUser;
+  }, []);
+
+  const registerWithEmail = useCallback(async (payload) => {
     const currentUser = await appClient.auth.registerWithEmail(payload);
     setUser(currentUser);
-    setIsAuthenticated(true);
     setAuthError(null);
     return currentUser;
-  };
+  }, []);
 
-  const logout = (shouldRedirect = true) => {
-    setUser(null);
-    setIsAuthenticated(false);
-    if (shouldRedirect) appClient.auth.logout('/login');
-    else appClient.auth.logout();
-  };
+  const updateProfile = useCallback(async (payload) => {
+    const currentUser = await appClient.auth.updateMe(payload);
+    setUser(currentUser);
+    setAuthError(null);
+    return currentUser;
+  }, []);
 
-  const navigateToLogin = () => {
+  const requestPasswordReset = useCallback(async (payload) => appClient.auth.requestPasswordReset(payload), []);
+  const validateResetToken = useCallback(async (token) => appClient.auth.validateResetToken(token), []);
+  const resetPassword = useCallback(async (payload) => appClient.auth.resetPassword(payload), []);
+  const changePassword = useCallback(async (payload) => appClient.auth.changePassword(payload), []);
+
+  const logout = useCallback(
+    async (shouldRedirect = true) => {
+      setUser(null);
+      setAuthError({ type: "auth_required", message: "Authentication required." });
+      if (shouldRedirect) await appClient.auth.logout("/login");
+      else await appClient.auth.logout();
+    },
+    []
+  );
+
+  const navigateToLogin = useCallback(() => {
     appClient.auth.redirectToLogin(window.location.href);
-  };
+  }, []);
 
-  // In this local/session storage auth model, refresh = re-read session
-  const refreshToken = async () => checkAppState();
+  const refreshToken = useCallback(async () => checkAppState(), [checkAppState]);
+  const isAuthenticated = Boolean(user);
 
-  return (
-    <AuthContext.Provider value={{
+  const value = useMemo(
+    () => ({
       user,
       isAuthenticated,
 
       isLoadingAuth,
       isLoadingPublicSettings,
-
-      // Compatibility for any code expecting "restoring"
       restoring: isLoadingAuth,
 
       authError,
       appPublicSettings,
 
-      signInWithGoogle,
       signInWithEmail,
+      signInWithSocial,
       registerWithEmail,
+      updateProfile,
+      requestPasswordReset,
+      validateResetToken,
+      resetPassword,
+      changePassword,
       logout,
       navigateToLogin,
 
       checkAppState,
       refreshToken,
-    }}>
-      {children}
-    </AuthContext.Provider>
+    }),
+    [
+      user,
+      isAuthenticated,
+      isLoadingAuth,
+      isLoadingPublicSettings,
+      authError,
+      signInWithEmail,
+      signInWithSocial,
+      registerWithEmail,
+      updateProfile,
+      requestPasswordReset,
+      validateResetToken,
+      resetPassword,
+      changePassword,
+      logout,
+      navigateToLogin,
+      checkAppState,
+      refreshToken,
+    ]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };

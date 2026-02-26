@@ -1,13 +1,29 @@
 import { PublicClientApplication } from "@azure/msal-browser";
-import { appClient } from "@/api/appClient";
 
-/* =========================
-   Small helpers
-========================= */
+const OAUTH_TIMEOUT_MS = 60_000;
+const MICROSOFT_OAUTH_TIMEOUT_MS = 180_000;
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const PROVIDERS = {
+  google: {
+    key: "google",
+    label: "Continue with Google",
+    clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+  },
+  microsoft: {
+    key: "microsoft",
+    label: "Continue with Microsoft",
+    clientId: import.meta.env.VITE_ENTRA_CLIENT_ID,
+  },
+  facebook: {
+    key: "facebook",
+    label: "Continue with Facebook",
+    clientId: import.meta.env.VITE_FACEBOOK_APP_ID,
+  },
+};
 
-async function waitFor(predicate, { timeoutMs = 6000, intervalMs = 100 } = {}) {
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function waitFor(predicate, { timeoutMs = OAUTH_TIMEOUT_MS, intervalMs = 100 } = {}) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (predicate()) return true;
@@ -16,228 +32,317 @@ async function waitFor(predicate, { timeoutMs = 6000, intervalMs = 100 } = {}) {
   return false;
 }
 
-const normalizeUser = (profile, provider) =>
-  appClient.auth.signInWithGoogle(
-    {
-      name: profile.name,
-      email: profile.email,
-      picture: profile.picture || "",
-      provider,
-    },
-    { remember: true }
-  );
-
-/* =========================
-   GOOGLE (Identity Services)
-========================= */
-
-let googleIdentityInitialized = false;
-
-function assertGoogleSigninEnvironment() {
-  const origin = window.location.origin;
-  const isLocalhost =
-    origin.startsWith("http://localhost") ||
-    origin.startsWith("http://127.0.0.1");
-
-  if (!window.isSecureContext && !isLocalhost) {
-    throw new Error("Google sign-in requires HTTPS (or localhost in development).");
-  }
-
-  // Google OAuth frequently blocks embedded app contexts.
-  if (window.top !== window.self) {
-    throw new Error("Google sign-in is blocked in embedded windows. Open the app in a new browser tab and try again.");
-  }
-}
-
-function ensureGoogleSdkSync() {
-  if (!window.google?.accounts?.id) {
-    throw new Error("Google SDK is still loading. Please wait a second and try again.");
-  }
-}
-
-function decodeJwtPayload(token) {
-  const parts = String(token || "").split(".");
-  if (parts.length < 2) throw new Error("Invalid Google credential.");
-  const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  const normalized = payload + "=".repeat((4 - (payload.length % 4 || 4)) % 4);
-  const json = atob(normalized);
-  return JSON.parse(json);
-}
-
-function mapGooglePromptError(reason) {
-  if (reason === "unregistered_origin") {
-    return `Google sign-in blocked: this origin (${window.location.origin}) is not authorized for your Google client ID. Add it to Authorized JavaScript origins in Google Cloud Console.`;
-  }
-  if (reason === "secure_http_required") {
-    return "Google sign-in requires HTTPS (or localhost in development).";
-  }
-  if (reason === "browser_not_supported") {
-    return "Google sign-in is not supported in this browser context. Open in a normal browser tab and try again.";
-  }
-  return `Google sign-in could not start (${reason}).`;
-}
-
-export async function loginWithGoogle() {
-  assertGoogleSigninEnvironment();
-  ensureGoogleSdkSync();
-
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-  if (!clientId) throw new Error("Missing VITE_GOOGLE_CLIENT_ID in your .env file");
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    const safeResolve = (value) => {
-      if (settled) return;
-      settled = true;
-      resolve(value);
-    };
-    const safeReject = (error) => {
-      if (settled) return;
-      settled = true;
-      reject(error);
-    };
-
-    try {
-      if (!googleIdentityInitialized) {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-          context: "signin",
-          use_fedcm_for_prompt: true,
-          callback: async (response) => {
-            try {
-              const profile = decodeJwtPayload(response?.credential);
-              if (!profile?.email) throw new Error("Google did not return an email (check consent + scopes).");
-              const user = await normalizeUser(
-                { name: profile.name || profile.given_name || "Google User", email: profile.email, picture: profile.picture },
-                "google"
-              );
-              safeResolve(user);
-            } catch (e) {
-              safeReject(e);
-            }
-          },
-        });
-        googleIdentityInitialized = true;
-      }
-
-      window.google.accounts.id.disableAutoSelect();
-      window.google.accounts.id.prompt((notification) => {
-        if (notification?.isNotDisplayed?.()) {
-          const reason = notification.getNotDisplayedReason?.() || "not_displayed";
-          safeReject(new Error(mapGooglePromptError(reason)));
-        } else if (notification?.isSkippedMoment?.()) {
-          const reason = notification.getSkippedReason?.() || "skipped";
-          safeReject(new Error(mapGooglePromptError(reason)));
-        } else if (notification?.isDismissedMoment?.()) {
-          const reason = notification.getDismissedReason?.() || "dismissed";
-          safeReject(new Error(mapGooglePromptError(reason)));
-        }
-      });
-    } catch (e) {
-      safeReject(e);
-    }
+function withTimeout(promise, timeoutMs = OAUTH_TIMEOUT_MS, message = "Authentication timed out.") {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs);
   });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timeoutId));
 }
 
-/* =========================
-   MICROSOFT ENTRA (MSAL)
-========================= */
+function ensureProviderConfigured(provider) {
+  const config = PROVIDERS[provider];
+  if (!config?.clientId) throw new Error(`${config?.label || provider} is not configured.`);
+}
 
-const entraClientId = import.meta.env.VITE_ENTRA_CLIENT_ID;
-const tenant = import.meta.env.VITE_ENTRA_TENANT_ID || "common";
+function extractEmailFromClaims(claims = {}) {
+  return (
+    claims.email ||
+    claims.preferred_username ||
+    (Array.isArray(claims.emails) ? claims.emails[0] : "") ||
+    ""
+  );
+}
 
-const msalInstance = new PublicClientApplication({
-  auth: {
-    clientId: entraClientId || "MISSING",
-    authority: `https://login.microsoftonline.com/${tenant}`,
-    redirectUri: import.meta.env.VITE_OAUTH_REDIRECT || window.location.origin,
-  },
-  cache: { cacheLocation: "localStorage" },
-});
-
+let msalInstance = null;
 let msalInitPromise = null;
+let msalHandleRedirectPromise = null;
+let microsoftLoginPromise = null;
 
-async function ensureMsalInitialized() {
-  if (!entraClientId) throw new Error("Missing VITE_ENTRA_CLIENT_ID in your .env file");
-  if (!msalInitPromise) msalInitPromise = msalInstance.initialize();
-  await msalInitPromise;
+function getMicrosoftRedirectUri() {
+  return import.meta.env.VITE_OAUTH_REDIRECT || window.location.origin;
 }
 
-export async function loginWithMicrosoft() {
-  await ensureMsalInitialized();
+function getMsalInstance() {
+  if (!msalInstance) {
+    msalInstance = new PublicClientApplication({
+      auth: {
+        clientId: import.meta.env.VITE_ENTRA_CLIENT_ID || "MISSING",
+        authority: `https://login.microsoftonline.com/${import.meta.env.VITE_ENTRA_TENANT_ID || "common"}`,
+        redirectUri: getMicrosoftRedirectUri(),
+        navigateToLoginRequestUrl: false,
+      },
+      cache: { cacheLocation: "localStorage" },
+    });
+  }
+  return msalInstance;
+}
 
-  const result = await msalInstance.loginPopup({
-    scopes: ["openid", "profile", "email", "User.Read"],
-    prompt: "select_account",
-  });
+async function ensureGoogleSdkLoaded() {
+  const existing = await waitFor(() => Boolean(window.google?.accounts?.oauth2), { timeoutMs: 4_000 });
+  if (existing) return;
 
-  const account = result.account;
-  if (!account?.username) throw new Error("Microsoft login did not return an email/username.");
-
-  return normalizeUser(
-    { name: account.name || account.username, email: account.username, picture: "" },
-    "microsoft"
+  const hasScript = Array.from(document.querySelectorAll("script")).some((script) =>
+    String(script.src || "").includes("accounts.google.com/gsi/client")
   );
+  if (!hasScript) {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  const ready = await waitFor(() => Boolean(window.google?.accounts?.oauth2), { timeoutMs: 12_000 });
+  if (!ready) {
+    throw new Error("Google SDK could not be loaded.");
+  }
 }
 
-/* =========================
-   FACEBOOK (SDK)
-========================= */
+async function ensureFacebookSdkLoaded() {
+  const existing = await waitFor(() => Boolean(window.FB), { timeoutMs: 4_000 });
+  if (existing) return;
+
+  const hasScript = Array.from(document.querySelectorAll("script")).some((script) =>
+    String(script.src || "").includes("connect.facebook.net/en_US/sdk.js")
+  );
+  if (!hasScript) {
+    const script = document.createElement("script");
+    script.src = "https://connect.facebook.net/en_US/sdk.js";
+    script.async = true;
+    script.defer = true;
+    script.crossOrigin = "anonymous";
+    document.head.appendChild(script);
+  }
+
+  const ready = await waitFor(() => Boolean(window.FB), { timeoutMs: 12_000 });
+  if (!ready) throw new Error("Facebook SDK could not be loaded.");
+}
 
 let fbInitialized = false;
-
-async function initFacebook() {
-  const appId = import.meta.env.VITE_FACEBOOK_APP_ID;
-  if (!appId) throw new Error("Missing VITE_FACEBOOK_APP_ID in your .env file");
-
-  // index.html includes the FB SDK script
-  const ok = await waitFor(() => !!window.FB, { timeoutMs: 8000 });
-  if (!ok) throw new Error("Facebook SDK not loaded. Confirm index.html has connect.facebook.net sdk.js");
-
+async function ensureFacebookInitialized() {
+  ensureProviderConfigured("facebook");
+  await ensureFacebookSdkLoaded();
   if (fbInitialized) return;
 
   window.FB.init({
-    appId,
+    appId: import.meta.env.VITE_FACEBOOK_APP_ID,
     cookie: true,
     xfbml: false,
-    version: "v18.0",
+    version: "v21.0",
   });
-
   fbInitialized = true;
 }
 
-export async function loginWithFacebook() {
-  await initFacebook();
+async function ensureMsalInitialized() {
+  ensureProviderConfigured("microsoft");
+  if (!msalInitPromise) msalInitPromise = getMsalInstance().initialize();
+  await msalInitPromise;
+  if (!msalHandleRedirectPromise) {
+    msalHandleRedirectPromise = getMsalInstance().handleRedirectPromise().catch(() => null);
+  }
+  await msalHandleRedirectPromise;
+}
 
-  return new Promise((resolve, reject) => {
-    window.FB.login(
-      function (response) {
-        if (!response.authResponse) return reject(new Error("Facebook login cancelled"));
+function clearStaleMsalInteractionState() {
+  const clientId = String(import.meta.env.VITE_ENTRA_CLIENT_ID || "").toLowerCase();
+  const directKeys = ["msal.interaction.status"];
+  if (clientId) {
+    directKeys.push(`msal.${clientId}.interaction.status`);
+    directKeys.push(`msal.${clientId}.interaction_status`);
+  }
 
-        window.FB.api(
-          "/me",
-          { fields: "name,email,picture" },
-          async function (userInfo) {
+  const stores = [window.localStorage, window.sessionStorage];
+  for (const store of stores) {
+    for (const key of directKeys) {
+      try {
+        store.removeItem(key);
+      } catch {
+        // Ignore storage access errors for hardened browser modes.
+      }
+    }
+
+    try {
+      for (let i = store.length - 1; i >= 0; i -= 1) {
+        const key = store.key(i);
+        if (!key) continue;
+        const normalized = key.toLowerCase();
+        const matchesClient = !clientId || normalized.includes(clientId);
+        const isInteractionKey =
+          normalized.includes("interaction.status") || normalized.includes("interaction_in_progress");
+        if (matchesClient && isInteractionKey) {
+          store.removeItem(key);
+        }
+      }
+    } catch {
+      // Ignore storage access errors for hardened browser modes.
+    }
+  }
+}
+
+function mapMicrosoftAuthError(error) {
+  const code = String(error?.errorCode || error?.code || "").toLowerCase();
+  if (code.includes("user_cancelled")) return new Error("Microsoft sign-in was canceled.");
+  if (code.includes("interaction_in_progress")) {
+    return new Error("Microsoft sign-in is already in progress. Close extra sign-in windows and try again.");
+  }
+  if (code.includes("monitor_popup_timeout")) {
+    return new Error("Microsoft sign-in timed out. Please complete sign-in in the Microsoft popup.");
+  }
+  return error;
+}
+
+async function runMicrosoftPopup({ allowRecovery = true } = {}) {
+  try {
+    const result = await getMsalInstance().loginPopup({
+      scopes: ["openid", "profile", "email", "User.Read"],
+      prompt: "select_account",
+      redirectUri: getMicrosoftRedirectUri(),
+    });
+
+    const claims = result.idTokenClaims || {};
+    const email = result.account?.username || extractEmailFromClaims(claims);
+    if (!email) throw new Error("Microsoft did not return an email address.");
+
+    return {
+      provider: "microsoft",
+      profile: {
+        name: result.account?.name || claims.name || email,
+        email,
+        picture: "",
+      },
+    };
+  } catch (error) {
+    const code = String(error?.errorCode || error?.code || "").toLowerCase();
+    if (allowRecovery && code.includes("interaction_in_progress")) {
+      clearStaleMsalInteractionState();
+      await sleep(200);
+      return runMicrosoftPopup({ allowRecovery: false });
+    }
+    throw mapMicrosoftAuthError(error);
+  }
+}
+
+export function getSocialProviderConfigs() {
+  return Object.values(PROVIDERS).map((provider) => ({
+    key: provider.key,
+    label: provider.label,
+    enabled: Boolean(provider.clientId),
+  }));
+}
+
+export async function loginWithGoogle() {
+  ensureProviderConfigured("google");
+  await ensureGoogleSdkLoaded();
+
+  return withTimeout(
+    new Promise((resolve, reject) => {
+      try {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+          scope: "openid email profile",
+          callback: async (tokenResponse) => {
             try {
-              if (!userInfo?.email) {
-                throw new Error("Facebook did not return an email (your FB app must request email permission).");
+              if (tokenResponse?.error) {
+                if (tokenResponse.error === "popup_closed_by_user") {
+                  throw new Error("Google sign-in was canceled.");
+                }
+                throw new Error(`Google sign-in failed: ${tokenResponse.error}`);
               }
 
-              const user = await normalizeUser(
-                { name: userInfo.name, email: userInfo.email, picture: userInfo.picture?.data?.url },
-                "facebook"
-              );
+              const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+              });
+              if (!response.ok) throw new Error("Unable to retrieve Google profile.");
 
-              resolve(user);
-            } catch (e) {
-              reject(e);
+              const profile = await response.json();
+              if (!profile?.email) throw new Error("Google did not return an email address.");
+
+              resolve({
+                provider: "google",
+                profile: {
+                  name: profile.name || profile.email,
+                  email: profile.email,
+                  picture: profile.picture || "",
+                },
+              });
+            } catch (error) {
+              reject(error);
             }
-          }
-        );
-      },
-      { scope: "public_profile,email", auth_type: "rerequest" }
-    );
+          },
+        });
+
+        tokenClient.requestAccessToken({ prompt: "select_account" });
+      } catch (error) {
+        reject(error);
+      }
+    }),
+    OAUTH_TIMEOUT_MS,
+    "Google sign-in timed out."
+  );
+}
+
+export async function loginWithMicrosoft() {
+  if (microsoftLoginPromise) return microsoftLoginPromise;
+
+  microsoftLoginPromise = withTimeout(
+    (async () => {
+      await ensureMsalInitialized();
+      return runMicrosoftPopup();
+    })(),
+    MICROSOFT_OAUTH_TIMEOUT_MS,
+    "Microsoft sign-in timed out."
+  ).finally(() => {
+    microsoftLoginPromise = null;
   });
+
+  return microsoftLoginPromise;
+}
+
+export async function loginWithFacebook() {
+  await ensureFacebookInitialized();
+
+  return withTimeout(
+    new Promise((resolve, reject) => {
+      window.FB.login(
+        (response) => {
+          if (!response?.authResponse) {
+            reject(new Error("Facebook sign-in was canceled."));
+            return;
+          }
+
+          window.FB.api("/me", { fields: "name,email,picture" }, (userInfo) => {
+            if (!userInfo || userInfo.error) {
+              reject(new Error("Failed to retrieve Facebook profile."));
+              return;
+            }
+            if (!userInfo.email) {
+              reject(new Error("Facebook did not return an email address."));
+              return;
+            }
+
+            resolve({
+              provider: "facebook",
+              profile: {
+                name: userInfo.name || userInfo.email,
+                email: userInfo.email,
+                picture: userInfo.picture?.data?.url || "",
+              },
+            });
+          });
+        },
+        { scope: "public_profile,email", auth_type: "rerequest" }
+      );
+    }),
+    OAUTH_TIMEOUT_MS,
+    "Facebook sign-in timed out."
+  );
+}
+
+export async function loginWithSocial(provider) {
+  const normalizedProvider = String(provider || "").toLowerCase();
+  if (normalizedProvider === "google") return loginWithGoogle();
+  if (normalizedProvider === "microsoft") return loginWithMicrosoft();
+  if (normalizedProvider === "facebook") return loginWithFacebook();
+  throw new Error("Unsupported social provider.");
 }

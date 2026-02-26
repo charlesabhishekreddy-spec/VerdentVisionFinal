@@ -11,10 +11,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 export default function InviteUserForm({ onClose }) {
   const [email, setEmail] = useState("");
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const queryClient = useQueryClient();
 
   const inviteMutation = useMutation({
     mutationFn: async () => {
+      setErrorMessage("");
       await appClient.users.inviteUser(email);
     },
     onSuccess: () => {
@@ -23,7 +25,10 @@ export default function InviteUserForm({ onClose }) {
       setTimeout(() => {
         onClose();
       }, 2000);
-    }
+    },
+    onError: (error) => {
+      setErrorMessage(error?.message || "Failed to send invitation. Please try again.");
+    },
   });
 
   const handleSubmit = (e) => {
@@ -70,7 +75,7 @@ export default function InviteUserForm({ onClose }) {
             {inviteMutation.isError && (
               <Alert variant="destructive">
                 <AlertDescription>
-                  Failed to send invitation. Please try again.
+                  {errorMessage}
                 </AlertDescription>
               </Alert>
             )}
