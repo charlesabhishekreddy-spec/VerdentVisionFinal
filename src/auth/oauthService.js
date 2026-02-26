@@ -28,60 +28,115 @@ const normalizeUser = (profile, provider) =>
   );
 
 /* =========================
-   GOOGLE (OAuth2 Token Client)
+   GOOGLE (Identity Services)
 ========================= */
 
-let googleTokenClient = null;
+let googleIdentityInitialized = false;
+
+function assertGoogleSigninEnvironment() {
+  const origin = window.location.origin;
+  const isLocalhost =
+    origin.startsWith("http://localhost") ||
+    origin.startsWith("http://127.0.0.1");
+
+  if (!window.isSecureContext && !isLocalhost) {
+    throw new Error("Google sign-in requires HTTPS (or localhost in development).");
+  }
+
+  // Google OAuth frequently blocks embedded app contexts.
+  if (window.top !== window.self) {
+    throw new Error("Google sign-in is blocked in embedded windows. Open the app in a new browser tab and try again.");
+  }
+}
+
+function ensureGoogleSdkSync() {
+  if (!window.google?.accounts?.id) {
+    throw new Error("Google SDK is still loading. Please wait a second and try again.");
+  }
+}
+
+function decodeJwtPayload(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length < 2) throw new Error("Invalid Google credential.");
+  const payload = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+  const normalized = payload + "=".repeat((4 - (payload.length % 4 || 4)) % 4);
+  const json = atob(normalized);
+  return JSON.parse(json);
+}
+
+function mapGooglePromptError(reason) {
+  if (reason === "unregistered_origin") {
+    return `Google sign-in blocked: this origin (${window.location.origin}) is not authorized for your Google client ID. Add it to Authorized JavaScript origins in Google Cloud Console.`;
+  }
+  if (reason === "secure_http_required") {
+    return "Google sign-in requires HTTPS (or localhost in development).";
+  }
+  if (reason === "browser_not_supported") {
+    return "Google sign-in is not supported in this browser context. Open in a normal browser tab and try again.";
+  }
+  return `Google sign-in could not start (${reason}).`;
+}
 
 export async function loginWithGoogle() {
+  assertGoogleSigninEnvironment();
+  ensureGoogleSdkSync();
+
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
   if (!clientId) throw new Error("Missing VITE_GOOGLE_CLIENT_ID in your .env file");
 
-  // Ensure gsi script loaded (index.html already includes it)
-  const ok = await waitFor(() => !!window.google?.accounts?.oauth2, { timeoutMs: 8000 });
-  if (!ok) {
-    throw new Error("Google SDK not loaded. Confirm index.html has https://accounts.google.com/gsi/client");
-  }
-
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const safeResolve = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const safeReject = (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    };
+
     try {
-      if (!googleTokenClient) {
-        googleTokenClient = window.google.accounts.oauth2.initTokenClient({
+      if (!googleIdentityInitialized) {
+        window.google.accounts.id.initialize({
           client_id: clientId,
-          scope: "openid email profile",
-          callback: async (tokenResponse) => {
+          auto_select: false,
+          cancel_on_tap_outside: true,
+          context: "signin",
+          use_fedcm_for_prompt: true,
+          callback: async (response) => {
             try {
-              if (tokenResponse?.error) throw new Error(tokenResponse.error);
-
-              const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-              });
-
-              if (!res.ok) {
-                const txt = await res.text().catch(() => "");
-                throw new Error(`Failed to fetch Google user profile (${res.status}). ${txt}`);
-              }
-
-              const profile = await res.json();
+              const profile = decodeJwtPayload(response?.credential);
               if (!profile?.email) throw new Error("Google did not return an email (check consent + scopes).");
-
               const user = await normalizeUser(
-                { name: profile.name, email: profile.email, picture: profile.picture },
+                { name: profile.name || profile.given_name || "Google User", email: profile.email, picture: profile.picture },
                 "google"
               );
-
-              resolve(user);
+              safeResolve(user);
             } catch (e) {
-              reject(e);
+              safeReject(e);
             }
           },
         });
+        googleIdentityInitialized = true;
       }
 
-      // Always show account chooser
-      googleTokenClient.requestAccessToken({ prompt: "select_account" });
+      window.google.accounts.id.disableAutoSelect();
+      window.google.accounts.id.prompt((notification) => {
+        if (notification?.isNotDisplayed?.()) {
+          const reason = notification.getNotDisplayedReason?.() || "not_displayed";
+          safeReject(new Error(mapGooglePromptError(reason)));
+        } else if (notification?.isSkippedMoment?.()) {
+          const reason = notification.getSkippedReason?.() || "skipped";
+          safeReject(new Error(mapGooglePromptError(reason)));
+        } else if (notification?.isDismissedMoment?.()) {
+          const reason = notification.getDismissedReason?.() || "dismissed";
+          safeReject(new Error(mapGooglePromptError(reason)));
+        }
+      });
     } catch (e) {
-      reject(e);
+      safeReject(e);
     }
   });
 }

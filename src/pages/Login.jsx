@@ -43,14 +43,16 @@ const StrengthMeter = ({ password }) => {
   );
 };
 
-const FloatingField = ({ label, type = "text", value, onChange, error }) => {
+const FloatingField = ({ label, type = "text", value, onChange, error, autoComplete, name }) => {
   const active = Boolean(value);
   return (
     <div className="relative">
       <Input
+        name={name}
         type={type}
         value={value}
         onChange={onChange}
+        autoComplete={autoComplete}
         className={`h-12 rounded-xl pt-5 ${error ? "border-red-400 focus-visible:ring-red-200" : ""}`}
       />
       <label
@@ -149,6 +151,7 @@ export default function Login() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [chooserOpen, setChooserOpen] = useState(false);
+  const [isGoogleReady, setIsGoogleReady] = useState(() => Boolean(window.google?.accounts?.id));
 
   const providers = useMemo(
     () => ({
@@ -183,6 +186,17 @@ export default function Login() {
   useEffect(() => {
     if (isAuthenticated) navigate(nextPath, { replace: true });
   }, [isAuthenticated, navigate, nextPath]);
+
+  useEffect(() => {
+    if (isGoogleReady) return;
+    const timer = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        setIsGoogleReady(true);
+        clearInterval(timer);
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [isGoogleReady]);
 
   const setProviderMemory = (p) => {
     setLastProvider(p);
@@ -272,6 +286,11 @@ export default function Login() {
       ? "Continue with Facebook"
       : "Choose a sign-in method";
 
+  const primaryDisabled =
+    loadingOauth ||
+    !primaryProvider ||
+    (primaryProvider === "google" && !isGoogleReady);
+
   const emailError = useMemo(() => {
     if (!email) return "";
     return emailRegex.test(email) ? "" : "Enter a valid email address.";
@@ -345,7 +364,7 @@ export default function Login() {
                 icon={primaryIcon}
                 label={primaryLabel}
                 onClick={() => (primaryHandler ? primaryHandler() : setChooserOpen(true))}
-                disabled={loadingOauth || !primaryProvider}
+                disabled={primaryDisabled}
                 isPrimary
               />
 
@@ -369,10 +388,26 @@ export default function Login() {
           </div>
 
           <form onSubmit={onEmailSignIn} className="space-y-4">
-            <FloatingField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} error={emailError} />
+            <FloatingField
+              label="Email"
+              name="email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={emailError}
+            />
 
             <div>
-              <FloatingField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} error={passwordError} />
+              <FloatingField
+                label="Password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                error={passwordError}
+              />
               <StrengthMeter password={password} />
             </div>
 
