@@ -28,7 +28,7 @@ export default function PestResult({ result, onStartOver }) {
     <Card className="border-none shadow-lg overflow-hidden">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-stone-50">
+        <div className="flex items-center justify-between border-b bg-violet-50/70 p-4">
           <h2 className="text-xl font-bold text-gray-900">Identification Result</h2>
           {onStartOver && (
             <Button variant="ghost" size="sm" onClick={onStartOver} className="gap-1 text-gray-600">
@@ -53,7 +53,7 @@ export default function PestResult({ result, onStartOver }) {
           {/* Identification */}
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-gray-600">
-              <Bug className="w-5 h-5 text-orange-600" />
+              <Bug className="w-5 h-5 text-violet-600" />
               <span className="font-medium">Identified As</span>
             </div>
             <p className="text-xl font-bold text-gray-900 ml-7">{result.pest_or_disease_name}</p>
@@ -88,13 +88,13 @@ export default function PestResult({ result, onStartOver }) {
           {result.key_features && result.key_features.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-gray-600">
-                <Target className="w-5 h-5 text-blue-600" />
+                <Target className="w-5 h-5 text-violet-600" />
                 <span className="font-medium">Key Identifying Features</span>
               </div>
               <ul className="ml-7 space-y-1">
                 {result.key_features.map((feature, i) => (
                   <li key={i} className="text-gray-700 flex items-start gap-2">
-                    <span className="text-orange-600">•</span>
+                    <span className="text-violet-600">•</span>
                     {feature}
                   </li>
                 ))}
@@ -106,7 +106,7 @@ export default function PestResult({ result, onStartOver }) {
           {result.lifecycle_stage && (
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-gray-600">
-                <Clock className="w-5 h-5 text-purple-600" />
+                <Clock className="w-5 h-5 text-violet-600" />
                 <span className="font-medium">Life Cycle Stage</span>
               </div>
               <p className="text-gray-700 ml-7">{result.lifecycle_stage}</p>
@@ -117,7 +117,7 @@ export default function PestResult({ result, onStartOver }) {
           {result.affected_plants && result.affected_plants.length > 0 && (
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-gray-600">
-                <Bug className="w-5 h-5 text-green-600" />
+                <Bug className="w-5 h-5 text-violet-600" />
                 <span className="font-medium">Commonly Affects</span>
               </div>
               <p className="text-gray-700 ml-7">{result.affected_plants.join(', ')}</p>

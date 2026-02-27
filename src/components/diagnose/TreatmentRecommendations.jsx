@@ -134,15 +134,15 @@ Be specific and practical.`,
 
   const getTypeStyle = (type) => {
     return type === "chemical" 
-      ? "text-amber-700" 
-      : "text-green-700";
+      ? "text-indigo-700" 
+      : "text-violet-700";
   };
 
   if (isLoading) {
     return (
       <Card className="border-none shadow-lg">
         <CardContent className="p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-green-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Generating treatment recommendations...</p>
         </CardContent>
       </Card>
@@ -153,7 +153,7 @@ Be specific and practical.`,
     <Card className="border-none shadow-lg overflow-hidden">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-stone-50">
+        <div className="flex items-center justify-between border-b bg-violet-50/70 p-4">
           <h2 className="text-xl font-bold text-gray-900">Treatment Suggestions</h2>
           <Button 
             variant="ghost" 
@@ -175,7 +175,7 @@ Be specific and practical.`,
             return (
               <Collapsible key={index} open={isExpanded} onOpenChange={() => toggleExpand(index)}>
                 <CollapsibleTrigger className="w-full">
-                  <div className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors">
+                    <div className="flex items-center justify-between p-4 transition-colors hover:bg-violet-50/50">
                     <div className="flex items-center gap-3">
                       <Icon className={`w-5 h-5 ${getTypeStyle(treatment.type)}`} />
                       <span className="font-medium text-gray-900">
@@ -194,7 +194,7 @@ Be specific and practical.`,
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <div className="px-4 pb-4 space-y-4 bg-stone-50">
+                  <div className="space-y-4 bg-violet-50/40 px-4 pb-4">
                     {/* Application Method */}
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-1">Application Method</h4>

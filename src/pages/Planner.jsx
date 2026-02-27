@@ -79,8 +79,8 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Sprout className="w-7 h-7 text-green-600" />
-          Crop Timeline Planner
+          <Sprout className="w-7 h-7 text-violet-600" />
+          Crop Planner
         </h2>
         <p className="text-gray-600">Generate a custom week-by-week plan for your crops</p>
       </div>
@@ -110,7 +110,7 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
           <Button
             onClick={generateTimeline}
             disabled={!cropName || !plantingDate || isGenerating}
-            className="w-full bg-green-600 hover:bg-green-700 gap-2"
+            className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
             size="lg"
           >
             {isGenerating ? (
@@ -132,7 +132,7 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
         <div className="space-y-6">
           {/* Overview */}
           <Card className="border-none shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-green-600 to-green-500 p-6 text-white">
+            <div className="bg-gradient-to-r from-violet-600/90 via-purple-600/85 to-fuchsia-600/85 p-6 text-white">
               <h3 className="text-2xl font-bold mb-2">{timeline.crop_name}</h3>
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -147,23 +147,23 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
             </div>
             <CardContent className="p-6 space-y-4">
               <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="rounded-lg border border-violet-200/80 bg-violet-50/70 p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Droplet className="w-5 h-5 text-blue-600" />
+                    <Droplet className="w-5 h-5 text-violet-600" />
                     <h4 className="font-semibold text-gray-900">Watering</h4>
                   </div>
                   <p className="text-sm text-gray-700">{timeline.watering_schedule}</p>
                 </div>
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="rounded-lg border border-violet-200/80 bg-violet-50/70 p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Sprout className="w-5 h-5 text-green-600" />
+                    <Sprout className="w-5 h-5 text-violet-600" />
                     <h4 className="font-semibold text-gray-900">Fertilizer</h4>
                   </div>
                   <p className="text-sm text-gray-700">{timeline.fertilizer_plan}</p>
                 </div>
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="rounded-lg border border-violet-200/80 bg-violet-50/70 p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Calendar className="w-5 h-5 text-amber-600" />
+                    <Calendar className="w-5 h-5 text-violet-600" />
                     <h4 className="font-semibold text-gray-900">Soil</h4>
                   </div>
                   <p className="text-sm text-gray-700">{timeline.soil_requirements}</p>
@@ -180,8 +180,8 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
             <CardContent className="p-6">
               <div className="space-y-4">
                 {timeline.timeline?.map((week, index) => (
-                  <div key={index} className="relative pl-8 pb-6 border-l-2 border-green-200 last:border-0">
-                    <div className="absolute left-0 top-0 -translate-x-1/2 bg-green-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
+                  <div key={index} className="relative pl-8 pb-6 border-l-2 border-violet-200 last:border-0">
+                    <div className="absolute left-0 top-0 -translate-x-1/2 bg-violet-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
                       {week.week}
                     </div>
                     <div className="bg-white border rounded-lg p-4">
@@ -192,14 +192,14 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
                       <div className="space-y-2 mb-3">
                         {week.activities?.map((activity, i) => (
                           <div key={i} className="flex items-start gap-2">
-                            <div className="w-1.5 h-1.5 rounded-full bg-green-500 mt-2" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 mt-2" />
                             <span className="text-sm text-gray-700">{activity}</span>
                           </div>
                         ))}
                       </div>
                       {week.tips && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                          <p className="text-sm text-blue-900">💡 {week.tips}</p>
+                        <div className="rounded-lg border border-violet-200/80 bg-violet-50/70 p-3">
+                          <p className="text-sm text-violet-900">💡 {week.tips}</p>
                         </div>
                       )}
                     </div>

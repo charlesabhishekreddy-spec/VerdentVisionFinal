@@ -40,13 +40,13 @@ export default function TreatmentHistory() {
       <Card className="border-none shadow-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
-            <Beaker className="w-5 h-5 text-blue-600" />
+            <Beaker className="w-5 h-5 text-violet-600" />
             Saved Treatments
           </CardTitle>
         </CardHeader>
         <CardContent className="p-12 text-center">
-          <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Beaker className="w-8 h-8 text-blue-600" />
+          <div className="bg-violet-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Beaker className="w-8 h-8 text-violet-600" />
           </div>
           <p className="text-gray-600">No saved treatments yet</p>
         </CardContent>
@@ -58,7 +58,7 @@ export default function TreatmentHistory() {
     <Card className="border-none shadow-lg">
       <CardHeader className="border-b">
         <CardTitle className="flex items-center gap-2">
-          <Beaker className="w-5 h-5 text-blue-600" />
+          <Beaker className="w-5 h-5 text-violet-600" />
           Saved Treatments ({treatments.length})
         </CardTitle>
       </CardHeader>
@@ -67,7 +67,7 @@ export default function TreatmentHistory() {
           {treatments.map((treatment) => {
             const Icon = getTypeIcon(treatment.treatment_type);
             return (
-              <div key={treatment.id} className="border rounded-lg p-4">
+              <div key={treatment.id} className="rounded-lg border border-white/70 bg-white/60 p-4 backdrop-blur-lg">
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-3 flex-1">
                     <Icon className="w-5 h-5 text-gray-600" />

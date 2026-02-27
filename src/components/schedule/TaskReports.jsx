@@ -57,7 +57,7 @@ export default function TaskReports({ tasks }) {
         <Card className="border-none shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="bg-green-500 p-2 rounded-lg">
+                <div className="bg-violet-600 p-2 rounded-lg">
                 <CheckCircle className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -69,7 +69,7 @@ export default function TaskReports({ tasks }) {
         <Card className="border-none shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="bg-blue-500 p-2 rounded-lg">
+                <div className="bg-violet-500 p-2 rounded-lg">
                 <TrendingUp className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -93,7 +93,7 @@ export default function TaskReports({ tasks }) {
         <Card className="border-none shadow-md">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <div className="bg-purple-500 p-2 rounded-lg">
+                <div className="bg-indigo-500 p-2 rounded-lg">
                 <Clock className="w-5 h-5 text-white" />
               </div>
             </div>
@@ -184,14 +184,14 @@ export default function TaskReports({ tasks }) {
                           <p className="font-semibold capitalize">{data.type}</p>
                           <p className="text-sm text-gray-600">Total: {data.total}</p>
                           <p className="text-sm text-gray-600">Completed: {data.completed}</p>
-                          <p className="text-sm text-green-600 font-semibold">Rate: {data.rate}%</p>
+                          <p className="text-sm text-violet-600 font-semibold">Rate: {data.rate}%</p>
                         </div>
                       );
                     }
                     return null;
                   }}
                 />
-                <Bar dataKey="rate" fill="#10b981" />
+                <Bar dataKey="rate" fill="#8b5cf6" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

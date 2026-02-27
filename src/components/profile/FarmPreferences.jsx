@@ -61,10 +61,10 @@ export default function FarmPreferences({ user }) {
   if (!isEditing) {
     return (
       <Card className="border-none shadow-lg">
-        <CardHeader className="border-b bg-blue-50">
+        <CardHeader className="border-b bg-violet-50/70">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Sprout className="w-5 h-5 text-blue-600" />
+              <Sprout className="w-5 h-5 text-violet-600" />
               Farm Preferences
             </CardTitle>
             <Button onClick={() => setIsEditing(true)} size="sm">
@@ -114,9 +114,9 @@ export default function FarmPreferences({ user }) {
 
   return (
     <Card className="border-none shadow-lg">
-      <CardHeader className="border-b bg-blue-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <CardTitle className="flex items-center gap-2">
-          <Sprout className="w-5 h-5 text-blue-600" />
+          <Sprout className="w-5 h-5 text-violet-600" />
           Edit Farm Preferences
         </CardTitle>
       </CardHeader>

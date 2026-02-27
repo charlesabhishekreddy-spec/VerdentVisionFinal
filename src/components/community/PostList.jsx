@@ -32,11 +32,11 @@ export default function PostList({ posts }) {
       {posts.map((post) => (
         <div
           key={post.id}
-          className="p-5 bg-white border rounded-xl hover:shadow-md transition-all cursor-pointer"
+          className="cursor-pointer rounded-xl border border-white/70 bg-white/70 p-5 backdrop-blur-lg transition-all hover:shadow-md"
         >
           <div className="flex items-start gap-3 mb-3">
-            <div className="bg-green-100 p-2 rounded-full">
-              <User className="w-5 h-5 text-green-600" />
+            <div className="bg-violet-100 p-2 rounded-full">
+              <User className="w-5 h-5 text-violet-600" />
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

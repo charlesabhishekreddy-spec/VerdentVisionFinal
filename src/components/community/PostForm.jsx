@@ -48,7 +48,7 @@ export default function PostForm({ onSubmit, onCancel, isLoading }) {
 
   return (
     <Card className="border-none shadow-lg">
-      <CardHeader className="border-b bg-green-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <div className="flex items-center justify-between">
           <CardTitle>Create New Post</CardTitle>
           <Button variant="ghost" size="icon" onClick={onCancel}>
@@ -159,7 +159,7 @@ export default function PostForm({ onSubmit, onCancel, isLoading }) {
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">
+            <Button type="submit" disabled={isLoading} className="bg-violet-600 hover:bg-violet-700">
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

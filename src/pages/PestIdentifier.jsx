@@ -155,10 +155,10 @@ Provide comprehensive identification with actionable details.`,
               </div>
             ) : (
               <div className="p-8">
-                <div className="border-2 border-dashed border-orange-300 rounded-2xl p-12 text-center bg-orange-50">
+                <div className="rounded-2xl border-2 border-dashed border-violet-200 p-12 text-center bg-violet-50/60">
                   <div className="flex justify-center gap-4 mb-6">
                     <div className="bg-white p-4 rounded-2xl shadow-md">
-                      <Bug className="w-12 h-12 text-orange-600" />
+                      <Bug className="w-12 h-12 text-violet-600" />
                     </div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -170,7 +170,7 @@ Provide comprehensive identification with actionable details.`,
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button
                       onClick={() => cameraInputRef.current?.click()}
-                      className="bg-orange-600 hover:bg-orange-700 gap-2"
+                      className="bg-violet-600 hover:bg-violet-700 gap-2"
                       size="lg"
                     >
                       <Camera className="w-5 h-5" />
@@ -179,7 +179,7 @@ Provide comprehensive identification with actionable details.`,
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       variant="outline"
-                      className="gap-2 border-orange-600 text-orange-600 hover:bg-orange-50"
+                      className="gap-2 border-violet-300 text-violet-700 hover:bg-violet-50"
                       size="lg"
                     >
                       <Upload className="w-5 h-5" />
@@ -210,7 +210,7 @@ Provide comprehensive identification with actionable details.`,
                 <Button
                   onClick={identifyPest}
                   disabled={isAnalyzing}
-                  className="w-full bg-orange-600 hover:bg-orange-700 gap-2"
+                  className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
                   size="lg"
                 >
                   {isAnalyzing ? (

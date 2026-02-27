@@ -41,7 +41,7 @@ function SocialButton({ icon, label, onClick, disabled }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+      className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-violet-200/70 bg-white/70 backdrop-blur-lg transition-all hover:bg-violet-50/70 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="flex items-center justify-center w-5">{icon}</span>
       <span className="font-medium text-slate-900">{label}</span>
@@ -114,8 +114,8 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9] grid md:grid-cols-2">
-      <div className="hidden md:flex bg-gradient-to-b from-[#13264f] to-[#233f7e] text-white p-12 items-center justify-center">
+    <div className="min-h-screen bg-transparent grid md:grid-cols-2">
+      <div className="hidden md:flex items-center justify-center bg-gradient-to-b from-[#2e1065] via-[#4c1d95] to-[#312e81] p-12 text-white">
         <div className="max-w-md text-center space-y-8">
           <div className="mx-auto bg-white w-16 h-16 rounded-xl flex items-center justify-center shadow">
             <Sprout className="text-[#1f4d9b]" />
@@ -125,14 +125,14 @@ export default function Login() {
             <br />
             Your farm awaits.
           </h1>
-          <p className="text-lg text-blue-100">
+          <p className="text-lg text-violet-100">
             Securely access Verdant Vision to manage diagnostics, schedules, and operations in one place.
           </p>
         </div>
       </div>
 
       <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/70 p-10 shadow-[0_20px_45px_rgba(0,0,0,0.08)] space-y-6">
+        <div className="w-full max-w-md rounded-3xl border border-white/75 bg-white/75 p-10 shadow-[0_20px_45px_rgba(109,40,217,0.18)] backdrop-blur-xl space-y-6">
           <div className="space-y-1">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Welcome to Verdant Vision</h2>
             <p className="text-slate-500 text-sm">Sign in to continue</p>
@@ -218,7 +218,7 @@ export default function Login() {
                 Remember me
               </label>
 
-              <Link to="/forgot-password" className="text-sm text-slate-500 hover:text-slate-900 transition">
+              <Link to="/forgot-password" className="text-sm text-slate-500 transition hover:text-violet-700">
                 Forgot password?
               </Link>
             </div>
@@ -226,7 +226,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="w-full h-12 rounded-xl bg-[#0b1736] hover:bg-[#08122b] text-white font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-60"
+              className="h-12 w-full rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white font-semibold shadow-[0_8px_22px_rgba(124,58,237,0.32)] transition-all hover:brightness-110 disabled:opacity-60"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -243,7 +243,7 @@ export default function Login() {
 
           <p className="text-sm text-slate-500 text-center">
             New to Verdant Vision?{" "}
-            <Link className="text-sky-600 font-semibold hover:text-sky-700" to="/signup">
+            <Link className="font-semibold text-violet-600 hover:text-violet-700" to="/signup">
               Create an account
             </Link>
           </p>

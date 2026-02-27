@@ -40,9 +40,9 @@ export default function PasswordSecurityCard() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+    <div className="rounded-2xl border border-white/75 bg-white/65 p-6 space-y-4 backdrop-blur-xl shadow-[0_10px_30px_rgba(124,58,237,0.12)]">
       <div className="flex items-center gap-2">
-        <ShieldCheck className="w-5 h-5 text-blue-600" />
+        <ShieldCheck className="w-5 h-5 text-violet-600" />
         <h3 className="text-lg font-semibold text-slate-900">Password Security</h3>
       </div>
 

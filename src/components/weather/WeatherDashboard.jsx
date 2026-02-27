@@ -138,7 +138,7 @@ Use actual real-time weather data from reliable sources.`,
     return (
       <Card className="border-none shadow-lg">
         <CardContent className="p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Fetching real-time weather...</p>
         </CardContent>
       </Card>
@@ -149,7 +149,7 @@ Use actual real-time weather data from reliable sources.`,
     const Icon = getWeatherIcon(weatherData.conditions);
     return (
       <Card className="border-none shadow-lg overflow-hidden">
-        <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-4 text-white">
+        <div className="bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Icon className="w-10 h-10" />
@@ -191,10 +191,10 @@ Use actual real-time weather data from reliable sources.`,
 
   return (
     <Card className="border-none shadow-lg overflow-hidden">
-      <CardHeader className="border-b bg-blue-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <CloudRain className="w-5 h-5 text-blue-600" />
+            <CloudRain className="w-5 h-5 text-violet-600" />
             Weather Forecast
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={fetchWeather}>
@@ -205,7 +205,7 @@ Use actual real-time weather data from reliable sources.`,
       <CardContent className="p-0">
         {/* Current Weather */}
         {weatherData && (
-          <div className="bg-gradient-to-br from-blue-400 to-blue-500 p-6 text-white">
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 p-6 text-white">
             <p className="text-blue-100 mb-2">{weatherData.location}</p>
             <div className="flex items-center gap-4 mb-4">
               {React.createElement(getWeatherIcon(weatherData.conditions), { className: "w-16 h-16" })}
@@ -252,7 +252,7 @@ Use actual real-time weather data from reliable sources.`,
                   </div>
                   <p className="text-sm text-gray-700 mb-2">{alert.message}</p>
                   {alert.action && (
-                    <p className="text-sm text-blue-600 font-medium">→ {alert.action}</p>
+                    <p className="text-sm text-violet-600 font-medium">→ {alert.action}</p>
                   )}
                 </div>
               ))}
@@ -270,11 +270,11 @@ Use actual real-time weather data from reliable sources.`,
                 return (
                   <div key={idx} className="text-center p-3 rounded-lg border hover:bg-gray-50">
                     <p className="text-xs font-semibold text-gray-600 mb-2">{day.day}</p>
-                    <Icon className="w-6 h-6 mx-auto mb-2 text-blue-600" />
+                    <Icon className="w-6 h-6 mx-auto mb-2 text-violet-600" />
                     <p className="text-sm font-bold text-gray-900">{Math.round(day.high)}°</p>
                     <p className="text-xs text-gray-500">{Math.round(day.low)}°</p>
                     {day.precipitation_chance > 0 && (
-                      <p className="text-xs text-blue-600 mt-1">{day.precipitation_chance}%</p>
+                      <p className="text-xs text-violet-600 mt-1">{day.precipitation_chance}%</p>
                     )}
                   </div>
                 );

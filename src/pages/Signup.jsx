@@ -32,7 +32,7 @@ function PasswordMeter({ password }) {
         <span className="font-medium">{password ? label : ""}</span>
       </div>
       <div className="mt-1 h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
-        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width }} />
+        <div className="h-full rounded-full bg-violet-500 transition-all" style={{ width }} />
       </div>
       <p className="mt-1 text-xs text-slate-400">
         Use at least 12 characters with upper/lowercase letters, numbers, and symbols.
@@ -72,7 +72,7 @@ function SocialButton({ icon, label, onClick, disabled }) {
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="w-full h-11 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
+      className="flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-violet-200/70 bg-white/70 backdrop-blur-lg transition-all hover:bg-violet-50/70 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="flex items-center justify-center w-5">{icon}</span>
       <span className="font-medium text-slate-900">{label}</span>
@@ -158,8 +158,8 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9] grid md:grid-cols-2">
-      <div className="hidden md:flex bg-gradient-to-b from-[#13264f] to-[#233f7e] text-white p-12 items-center justify-center">
+    <div className="min-h-screen bg-transparent grid md:grid-cols-2">
+      <div className="hidden md:flex items-center justify-center bg-gradient-to-b from-[#2e1065] via-[#4c1d95] to-[#312e81] p-12 text-white">
         <div className="max-w-md text-center space-y-8">
           <div className="mx-auto bg-white w-16 h-16 rounded-xl flex items-center justify-center shadow">
             <Sprout className="text-[#1f4d9b]" />
@@ -169,14 +169,14 @@ export default function Signup() {
             <br />
             Build smarter farms.
           </h1>
-          <p className="text-lg text-blue-100">
+          <p className="text-lg text-violet-100">
             Enterprise-ready authentication with secure sessions, password controls, and admin governance.
           </p>
         </div>
       </div>
 
       <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/70 p-10 shadow-[0_20px_45px_rgba(0,0,0,0.08)] space-y-6">
+        <div className="w-full max-w-md rounded-3xl border border-white/75 bg-white/75 p-10 shadow-[0_20px_45px_rgba(109,40,217,0.18)] backdrop-blur-xl space-y-6">
           <div className="space-y-1">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Create Account</h2>
             <p className="text-slate-500 text-sm">Set up secure access to Verdant Vision</p>
@@ -267,7 +267,7 @@ export default function Signup() {
             <Button
               type="submit"
               disabled={!canSubmit}
-              className="w-full h-12 rounded-xl bg-[#0b1736] hover:bg-[#08122b] text-white font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-60"
+              className="h-12 w-full rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white font-semibold shadow-[0_8px_22px_rgba(124,58,237,0.32)] transition-all hover:brightness-110 disabled:opacity-60"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -284,7 +284,7 @@ export default function Signup() {
 
           <p className="text-sm text-slate-500 text-center">
             Already have an account?{" "}
-            <Link className="text-sky-600 font-semibold hover:text-sky-700" to="/login">
+            <Link className="font-semibold text-violet-600 hover:text-violet-700" to="/login">
               Sign in
             </Link>
           </p>

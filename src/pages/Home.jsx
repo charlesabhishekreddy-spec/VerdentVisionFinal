@@ -40,28 +40,28 @@ export default function Home() {
       title: "Total Diagnoses",
       value: diagnoses.length,
       icon: Activity,
-      color: "bg-blue-500",
+      color: "bg-violet-500",
       change: "+12%"
     },
     {
       title: "Active Tasks",
       value: tasks.length,
       icon: Clock,
-      color: "bg-orange-500",
+      color: "bg-fuchsia-500",
       change: "5 pending"
     },
     {
       title: "Crop Plans",
       value: plans.length,
       icon: Sprout,
-      color: "bg-green-500",
+      color: "bg-violet-400",
       change: "Growing"
     },
     {
       title: "Health Score",
       value: "92%",
       icon: TrendingUp,
-      color: "bg-purple-500",
+      color: "bg-indigo-500",
       change: "+5%"
     }
   ];
@@ -70,25 +70,25 @@ export default function Home() {
     {
       title: "Diagnose Plant",
       icon: Camera,
-      color: "from-green-500 to-green-600",
+      color: "from-violet-500 to-fuchsia-600",
       path: "Diagnose"
     },
     {
       title: "Ask AI",
       icon: MessageCircle,
-      color: "from-blue-500 to-blue-600",
+      color: "from-violet-600 to-indigo-600",
       path: "Chat"
     },
     {
       title: "Schedule Task",
       icon: Calendar,
-      color: "from-orange-500 to-orange-600",
+      color: "from-purple-500 to-violet-600",
       path: "Schedule"
     },
     {
       title: "Crop Planner",
       icon: Sprout,
-      color: "from-purple-500 to-purple-600",
+      color: "from-fuchsia-500 to-violet-600",
       path: "Planner"
     }
   ];
@@ -96,11 +96,11 @@ export default function Home() {
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-2xl p-6 text-white shadow-lg">
-        <h2 className="text-2xl font-bold mb-2">
+      <div className="glass-panel bg-gradient-to-r from-violet-200/85 via-purple-200/75 to-fuchsia-200/75 p-6 text-slate-800">
+        <h2 className="mb-2 text-2xl font-semibold">
           Welcome back, {user?.full_name?.split(' ')[0] || 'Farmer'}! 🌱
         </h2>
-        <p className="text-green-100">
+        <p className="text-slate-600">
           Your crops are looking healthy today. Keep up the great work!
         </p>
       </div>
@@ -127,9 +127,9 @@ export default function Home() {
                     <Icon className="w-5 h-5 text-white" />
                   </div>
                 </div>
-                <div className="text-2xl font-bold text-gray-900">{stat.value}</div>
+                <div className="text-2xl font-semibold text-gray-900">{stat.value}</div>
                 <div className="text-xs text-gray-500">{stat.title}</div>
-                <div className="text-xs text-green-600 font-medium mt-1">{stat.change}</div>
+                <div className="text-xs text-violet-600 font-medium mt-1">{stat.change}</div>
               </CardContent>
             </Card>
           );
@@ -138,7 +138,7 @@ export default function Home() {
 
       {/* Quick Actions */}
       <div>
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Quick Actions</h3>
+        <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {quickActions.map((action, index) => {
             const Icon = action.icon;
@@ -147,7 +147,7 @@ export default function Home() {
                 <Card className="border-none hover:scale-105 transition-transform cursor-pointer overflow-hidden h-full">
                   <div className={`bg-gradient-to-br ${action.color} p-6 text-white h-full flex flex-col items-center justify-center gap-2`}>
                     <Icon className="w-8 h-8" />
-                    <span className="text-sm font-semibold text-center">{action.title}</span>
+                    <span className="text-center text-sm font-medium">{action.title}</span>
                   </div>
                 </Card>
               </Link>
@@ -161,13 +161,13 @@ export default function Home() {
         <Card className="border-none shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-green-600" />
+              <Activity className="w-5 h-5 text-violet-600" />
               Recent Diagnoses
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {diagnoses.slice(0, 3).map((diagnosis) => (
-              <div key={diagnosis.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+              <div key={diagnosis.id} className="flex items-center gap-3 rounded-lg border border-violet-100/70 bg-white/70 p-3">
                 {diagnosis.image_url && (
                   <img 
                     src={diagnosis.image_url} 
@@ -176,7 +176,7 @@ export default function Home() {
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900 truncate">{diagnosis.plant_name}</p>
+                  <p className="truncate font-medium text-gray-900">{diagnosis.plant_name}</p>
                   <p className="text-sm text-gray-600 truncate">{diagnosis.disease_name || 'Healthy'}</p>
                 </div>
                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -200,15 +200,15 @@ export default function Home() {
         <Card className="border-none shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-orange-600" />
+              <Clock className="w-5 h-5 text-violet-600" />
               Upcoming Tasks
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {tasks.slice(0, 3).map((task) => (
-              <div key={task.id} className="flex items-center gap-3 p-3 bg-orange-50 rounded-lg border border-orange-100">
+              <div key={task.id} className="flex items-center gap-3 rounded-lg border border-violet-200/70 bg-violet-50/60 p-3">
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{task.title}</p>
+                  <p className="font-medium text-gray-900">{task.title}</p>
                   <p className="text-sm text-gray-600">
                     {format(new Date(task.due_date), "MMM d, yyyy")}
                   </p>

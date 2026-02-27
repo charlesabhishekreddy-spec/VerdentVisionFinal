@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
-import { Home, Camera, MessageCircle, Calendar, Users, Sprout, User, BookOpen, CloudRain, Bug, Shield } from "lucide-react";
+import { Shield, Sprout, User } from "lucide-react";
 import { appClient } from "@/api/appClient";
+
+const HOME_PATH = "/";
+const HOME_ALIAS = createPageUrl("Home");
 
 export default function Layout({ children, currentPageName: _currentPageName }) {
   const location = useLocation();
@@ -20,101 +23,91 @@ export default function Layout({ children, currentPageName: _currentPageName }) 
     fetchUser();
   }, []);
 
-  const navItems = [
-    { name: "Home", icon: Home, path: createPageUrl("Home") },
-    { name: "Diagnose", icon: Camera, path: createPageUrl("Diagnose") },
-    { name: "Chat", icon: MessageCircle, path: createPageUrl("Chat") },
-    { name: "Tasks", icon: Calendar, path: createPageUrl("Schedule") },
-    { name: "More", icon: Users, path: createPageUrl("Community") },
-  ];
+  const navItems = useMemo(
+    () => [
+      { name: "Home", path: HOME_PATH },
+      { name: "Diagnose", path: createPageUrl("Diagnose") },
+      { name: "History", path: createPageUrl("Dashboard") },
+      { name: "Schedule", path: createPageUrl("Schedule") },
+      { name: "Planner", path: createPageUrl("Planner") },
+      { name: "Chat", path: createPageUrl("Chat") },
+      { name: "Community", path: createPageUrl("Community") },
+      { name: "Treatments", path: createPageUrl("Treatments") },
+    ],
+    []
+  );
+
+  const pathname = location.pathname.toLowerCase();
+  const isHome = pathname === HOME_PATH || pathname === HOME_ALIAS;
+
+  const isItemActive = (item) => {
+    if (item.name === "Home") return isHome;
+    return pathname === item.path.toLowerCase();
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100/30 pb-20">
-      {/* Header */}
-      <header className="bg-gradient-to-r from-blue-400/90 to-blue-500/90 backdrop-blur-sm text-white sticky top-0 z-40 shadow-lg">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <Link to={createPageUrl("Home")} className="flex items-center gap-3">
-              <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
-                <Sprout className="w-6 h-6" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Verdant Vision</h1>
-                <p className="text-xs text-blue-100">Smart Farming Assistant</p>
-              </div>
-            </Link>
-            <div className="flex items-center gap-2">
-                <Link to={createPageUrl("Predictions")}>
-                  <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors backdrop-blur-sm relative">
-                    <CloudRain className="w-5 h-5" />
-                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                      !
-                    </span>
-                  </button>
-                </Link>
-                <Link to={createPageUrl("PestIdentifier")}>
-                  <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors backdrop-blur-sm">
-                    <Bug className="w-5 h-5" />
-                  </button>
-                </Link>
-                <Link to={createPageUrl("Treatments")}>
-                  <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors backdrop-blur-sm">
-                    <BookOpen className="w-5 h-5" />
-                  </button>
-                </Link>
-                {currentUser?.role === 'admin' && (
-                  <Link to={createPageUrl("Admin")}>
-                    <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors backdrop-blur-sm relative">
-                      <Shield className="w-5 h-5" />
-                      <span className="absolute -top-1 -right-1 bg-purple-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold text-[10px]">
-                        A
-                      </span>
-                    </button>
+    <div className="min-h-screen">
+      <header className="sticky top-0 z-40 border-b border-violet-100/80 bg-white/70 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-[1760px] items-center justify-between gap-6 px-4 py-4 sm:px-6 lg:px-10">
+          <Link to={HOME_PATH} className="flex items-center gap-3">
+            <div className="rounded-xl bg-gradient-to-br from-teal-500 to-cyan-500 p-2.5 text-white shadow-lg shadow-cyan-500/30">
+              <Sprout className="h-5 w-5" />
+            </div>
+            <div className="leading-tight">
+              <p className="app-brand text-[1.78rem] font-semibold sm:text-[2.35rem]">AEROVANTA</p>
+            </div>
+          </Link>
+
+          <nav className="flex max-w-full flex-1 items-center justify-center overflow-x-auto">
+            <div className="flex min-w-max items-center gap-1 rounded-2xl bg-white/60 p-1.5 backdrop-blur-lg">
+              {navItems.map((item) => {
+                const active = isItemActive(item);
+                return (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                      active
+                        ? "bg-violet-100 text-violet-700"
+                        : "text-slate-700 hover:bg-violet-50/80 hover:text-violet-700"
+                    }`}
+                  >
+                    {item.name}
                   </Link>
-                )}
-                <Link to={createPageUrl("Profile")}>
-                  <button className="bg-white/20 hover:bg-white/30 p-2 rounded-lg transition-colors backdrop-blur-sm">
-                    <User className="w-5 h-5" />
-                  </button>
+                );
+              })}
+              {currentUser?.role === "admin" ? (
+                <Link
+                  to={createPageUrl("Admin")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition-all ${
+                    pathname === createPageUrl("Admin")
+                      ? "bg-violet-100 text-violet-700"
+                      : "text-slate-700 hover:bg-violet-50/80 hover:text-violet-700"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Admin
+                  </span>
                 </Link>
-              </div>
-          </div>
+              ) : null}
+            </div>
+          </nav>
+
+          <Link
+            to={createPageUrl("Profile")}
+            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-all ${
+              pathname === createPageUrl("Profile")
+                ? "border-violet-200 bg-violet-100 text-violet-700"
+                : "border-white/70 bg-white/65 text-violet-600 hover:bg-violet-100/70"
+            }`}
+          >
+            <User className="h-5 w-5" />
+          </Link>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 max-w-7xl">
-        {children}
-      </main>
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-blue-100 shadow-lg z-50">
-        <div className="flex items-center justify-around max-w-lg mx-auto">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`flex flex-col items-center gap-1 py-3 px-4 transition-all duration-200 ${
-                  isActive
-                    ? "text-blue-500"
-                    : "text-gray-500 hover:text-blue-400"
-                }`}
-              >
-                <div className={`relative ${isActive ? "scale-110" : ""}`}>
-                  <Icon className="w-6 h-6" />
-                  {isActive && (
-                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-blue-500 rounded-full" />
-                  )}
-                </div>
-                <span className="text-xs font-medium">{item.name}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      <main className="mx-auto w-full max-w-[1760px] px-4 py-6 sm:px-6 lg:px-10 lg:py-8">{children}</main>
     </div>
   );
 }

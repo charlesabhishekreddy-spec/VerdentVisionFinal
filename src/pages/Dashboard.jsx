@@ -49,7 +49,7 @@ export default function Dashboard() {
           <h1 className="text-3xl font-bold text-slate-800">Farm Intelligence Dashboard</h1>
           <p className="text-slate-600 mt-1">Track disease trends and export actionable reports.</p>
         </div>
-        <Button onClick={exportToCSV} disabled={exporting || diagnoses.length === 0} className="gap-2 bg-emerald-600 hover:bg-emerald-700">
+        <Button onClick={exportToCSV} disabled={exporting || diagnoses.length === 0} className="gap-2 bg-violet-600 hover:bg-violet-700">
           <Download className="w-4 h-4" />
           {exporting ? 'Exporting...' : 'Export CSV'}
         </Button>
@@ -58,12 +58,12 @@ export default function Dashboard() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="glass-panel"><CardContent className="p-5"><p className="text-sm text-slate-600">Total Diagnoses</p><p className="text-2xl font-bold text-slate-800">{diagnoses.length}</p></CardContent></Card>
         <Card className="glass-panel"><CardContent className="p-5"><p className="text-sm text-slate-600">High Risk Cases</p><p className="text-2xl font-bold text-rose-700">{highRiskCount}</p></CardContent></Card>
-        <Card className="glass-panel"><CardContent className="p-5"><p className="text-sm text-slate-600">Healthy Ratio</p><p className="text-2xl font-bold text-emerald-700">{diagnoses.length ? Math.round(((diagnoses.length - highRiskCount) / diagnoses.length) * 100) : 0}%</p></CardContent></Card>
+        <Card className="glass-panel"><CardContent className="p-5"><p className="text-sm text-slate-600">Healthy Ratio</p><p className="text-2xl font-bold text-violet-700">{diagnoses.length ? Math.round(((diagnoses.length - highRiskCount) / diagnoses.length) * 100) : 0}%</p></CardContent></Card>
       </div>
 
       <Card className="glass-panel">
         <CardHeader className="border-b border-white/50">
-          <CardTitle className="text-slate-800 flex items-center gap-2"><Activity className="w-5 h-5 text-cyan-700" />Latest Diagnoses</CardTitle>
+          <CardTitle className="text-slate-800 flex items-center gap-2"><Activity className="w-5 h-5 text-violet-700" />Latest Diagnoses</CardTitle>
         </CardHeader>
         <CardContent className="p-5">
           {diagnoses.length === 0 ? (

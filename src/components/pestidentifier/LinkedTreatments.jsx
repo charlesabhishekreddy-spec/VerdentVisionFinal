@@ -90,14 +90,14 @@ Be specific and practical.`,
   };
 
   const getTypeStyle = (type) => {
-    return type === "chemical" ? "text-amber-700" : "text-green-700";
+      return type === "chemical" ? "text-indigo-700" : "text-violet-700";
   };
 
   if (isLoading) {
     return (
       <Card className="border-none shadow-lg">
         <CardContent className="p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-orange-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading treatments...</p>
         </CardContent>
       </Card>
@@ -108,7 +108,7 @@ Be specific and practical.`,
     <Card className="border-none shadow-lg overflow-hidden">
       <CardContent className="p-0">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-stone-50">
+        <div className="flex items-center justify-between border-b bg-violet-50/70 p-4">
           <h2 className="text-xl font-bold text-gray-900">Available Treatments</h2>
           {treatments.length > 0 ? (
             <Button variant="ghost" size="sm" onClick={generateTreatments} disabled={isGenerating} className="gap-2">
@@ -116,7 +116,7 @@ Be specific and practical.`,
               Regenerate
             </Button>
           ) : (
-            <Button size="sm" onClick={generateTreatments} disabled={isGenerating} className="gap-2 bg-orange-600 hover:bg-orange-700">
+            <Button size="sm" onClick={generateTreatments} disabled={isGenerating} className="gap-2 bg-violet-600 hover:bg-violet-700">
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -134,11 +134,11 @@ Be specific and practical.`,
 
         {treatments.length === 0 ? (
           <div className="p-12 text-center">
-            <div className="bg-orange-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Beaker className="w-8 h-8 text-orange-600" />
+            <div className="bg-violet-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Beaker className="w-8 h-8 text-violet-600" />
             </div>
             <p className="text-gray-600 mb-4">No treatments found for this pest/disease</p>
-            <Button onClick={generateTreatments} disabled={isGenerating} className="bg-orange-600 hover:bg-orange-700">
+            <Button onClick={generateTreatments} disabled={isGenerating} className="bg-violet-600 hover:bg-violet-700">
               {isGenerating ? "Generating Treatments..." : "Generate AI Treatments"}
             </Button>
           </div>
@@ -151,7 +151,7 @@ Be specific and practical.`,
               return (
                 <Collapsible key={treatment.id} open={isExpanded} onOpenChange={() => setExpandedId(isExpanded ? null : index)}>
                   <CollapsibleTrigger className="w-full">
-                    <div className="flex items-center justify-between p-4 hover:bg-stone-50 transition-colors">
+                    <div className="flex items-center justify-between p-4 transition-colors hover:bg-violet-50/50">
                       <div className="flex items-center gap-3">
                         <Icon className={`w-5 h-5 ${getTypeStyle(treatment.treatment_type)}`} />
                         <span className="font-medium text-gray-900">
@@ -170,7 +170,7 @@ Be specific and practical.`,
                   </CollapsibleTrigger>
 
                   <CollapsibleContent>
-                    <div className="px-4 pb-4 space-y-4 bg-stone-50">
+                    <div className="space-y-4 bg-violet-50/40 px-4 pb-4">
                       {/* Application Method */}
                       {treatment.application_method && (
                         <div>

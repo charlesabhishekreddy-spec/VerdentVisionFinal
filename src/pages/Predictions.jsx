@@ -213,7 +213,7 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <CloudRain className="w-7 h-7 text-blue-600" />
+            <CloudRain className="w-7 h-7 text-violet-600" />
             Pest & Disease Predictions
           </h2>
           <p className="text-gray-600">AI-powered risk alerts based on weather and historical data</p>
@@ -238,7 +238,7 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
           <Button
             onClick={generatePredictions}
             disabled={isGenerating}
-            className="bg-blue-600 hover:bg-blue-700 gap-2"
+            className="bg-violet-600 hover:bg-violet-700 gap-2"
           >
             {isGenerating ? (
               <>
@@ -281,8 +281,8 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
       ) : (
         <Card className="border-none shadow-lg">
           <CardContent className="p-12 text-center">
-            <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <TrendingUp className="w-8 h-8 text-blue-600" />
+            <div className="bg-violet-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <TrendingUp className="w-8 h-8 text-violet-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Active Predictions</h3>
             <p className="text-gray-600 mb-4">
@@ -291,7 +291,7 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
             <Button
               onClick={generatePredictions}
               disabled={isGenerating}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isGenerating ? "Analyzing..." : "Generate First Predictions"}
             </Button>
@@ -314,17 +314,17 @@ Consider weather patterns, humidity levels, seasonal trends, and historical data
 
       {/* Recent Weather Summary */}
       {weatherLogs.length > 0 && (
-        <Card className="border-none shadow-lg">
-          <CardHeader className="border-b">
-            <CardTitle className="flex items-center gap-2">
-              <CloudRain className="w-5 h-5 text-blue-600" />
-              Recent Weather Data
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid md:grid-cols-4 gap-4">
-              {weatherLogs.slice(0, 7).map((log) => (
-                <div key={log.id} className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+      <Card className="border-none shadow-lg">
+        <CardHeader className="border-b bg-violet-50/60">
+          <CardTitle className="flex items-center gap-2">
+            <CloudRain className="w-5 h-5 text-violet-600" />
+            Recent Weather Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-6">
+          <div className="grid md:grid-cols-4 gap-4">
+            {weatherLogs.slice(0, 7).map((log) => (
+                <div key={log.id} className="rounded-lg border border-violet-200/80 bg-gradient-to-br from-violet-50 to-purple-100/80 p-4">
                   <div className="text-xs text-gray-600 mb-1">{new Date(log.date).toLocaleDateString()}</div>
                   <div className="text-2xl font-bold text-gray-900 mb-1">{log.temperature_high}°F</div>
                   <div className="flex items-center gap-3 text-sm text-gray-700">

@@ -43,13 +43,13 @@ export default function DiagnosisHistory({ diagnoses }) {
       <Card className="border-none shadow-lg">
         <CardHeader className="border-b">
           <CardTitle className="flex items-center gap-2">
-            <Leaf className="w-5 h-5 text-green-600" />
+            <Leaf className="w-5 h-5 text-violet-600" />
             Diagnosis History
           </CardTitle>
         </CardHeader>
         <CardContent className="p-12 text-center">
-          <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Leaf className="w-8 h-8 text-blue-600" />
+          <div className="bg-violet-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Leaf className="w-8 h-8 text-violet-600" />
           </div>
           <p className="text-gray-600">No diagnoses yet. Start by scanning a plant!</p>
         </CardContent>
@@ -61,14 +61,14 @@ export default function DiagnosisHistory({ diagnoses }) {
     <Card className="border-none shadow-lg">
       <CardHeader className="border-b">
         <CardTitle className="flex items-center gap-2">
-          <Leaf className="w-5 h-5 text-green-600" />
+          <Leaf className="w-5 h-5 text-violet-600" />
           Diagnosis History ({diagnoses.length})
         </CardTitle>
       </CardHeader>
       <CardContent className="p-6">
         <div className="space-y-3">
           {diagnoses.map((diagnosis) => (
-            <div key={diagnosis.id} className="border rounded-lg overflow-hidden">
+            <div key={diagnosis.id} className="overflow-hidden rounded-lg border border-white/70 bg-white/60 backdrop-blur-lg">
               <div
                 className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
                 onClick={() => setExpandedId(expandedId === diagnosis.id ? null : diagnosis.id)}
@@ -126,7 +126,7 @@ export default function DiagnosisHistory({ diagnoses }) {
                       <ul className="space-y-1">
                         {diagnosis.symptoms.map((symptom, idx) => (
                           <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                            <span className="text-green-600">•</span>
+                            <span className="text-violet-600">•</span>
                             {symptom}
                           </li>
                         ))}

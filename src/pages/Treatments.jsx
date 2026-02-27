@@ -56,7 +56,7 @@ export default function Treatments() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div>
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Beaker className="w-7 h-7 text-green-600" />
+          <Beaker className="w-7 h-7 text-violet-600" />
           Treatment Library
         </h2>
         <p className="text-gray-600">Browse proven treatments for common plant diseases</p>
@@ -82,7 +82,7 @@ export default function Treatments() {
                   onClick={() => setFilterType(type)}
                   variant={filterType === type ? "default" : "outline"}
                   size="sm"
-                  className={filterType === type ? "bg-green-600 hover:bg-green-700" : ""}
+                  className={filterType === type ? "bg-violet-600 hover:bg-violet-700" : ""}
                 >
                   {type.charAt(0).toUpperCase() + type.slice(1)}
                 </Button>
@@ -165,7 +165,7 @@ export default function Treatments() {
                 )}
 
                 {/* Application */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="rounded-lg border border-violet-200/80 bg-violet-50/70 p-3">
                   <h4 className="text-sm font-semibold text-gray-900 mb-1">Application:</h4>
                   <p className="text-sm text-gray-700">{treatment.application_method}</p>
                   <p className="text-xs text-gray-600 mt-2">

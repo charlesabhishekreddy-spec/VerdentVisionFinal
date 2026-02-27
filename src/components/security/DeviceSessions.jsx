@@ -31,7 +31,7 @@ export default function DeviceSessions() {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4">
+    <div className="rounded-2xl border border-white/75 bg-white/65 p-6 space-y-4 backdrop-blur-xl shadow-[0_10px_30px_rgba(124,58,237,0.12)]">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-slate-900">Active Devices</h3>
         <Button
@@ -51,7 +51,7 @@ export default function DeviceSessions() {
             <div
               key={s.id}
               className={`rounded-xl border p-4 text-sm ${
-                s.is_current_device ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200"
+                s.is_current_device ? "border-violet-200 bg-violet-50/60" : "border-white/70 bg-white/60"
               }`}
             >
               <div className="font-medium text-slate-900 flex items-center justify-between">

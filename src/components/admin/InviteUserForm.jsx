@@ -38,10 +38,10 @@ export default function InviteUserForm({ onClose }) {
 
   return (
     <Card className="border-none shadow-xl">
-      <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+      <CardHeader className="border-b bg-gradient-to-r from-violet-50 to-purple-100/80">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <Mail className="w-5 h-5 text-blue-600" />
+            <Mail className="w-5 h-5 text-violet-600" />
             Invite New User
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -93,7 +93,7 @@ export default function InviteUserForm({ onClose }) {
               <Button
                 type="submit"
                 disabled={inviteMutation.isPending}
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-violet-600 hover:bg-violet-700"
               >
                 {inviteMutation.isPending ? (
                   <>

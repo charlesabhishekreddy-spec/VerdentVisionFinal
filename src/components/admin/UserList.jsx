@@ -19,11 +19,11 @@ export default function UserList({
         </Badge>
       );
     }
-    return (
-      <Badge className="bg-blue-100 text-blue-800 gap-1">
-        <User className="w-3 h-3" />
-        User
-      </Badge>
+      return (
+        <Badge className="bg-violet-100 text-violet-800 gap-1">
+          <User className="w-3 h-3" />
+          User
+        </Badge>
     );
   };
 
@@ -54,12 +54,12 @@ export default function UserList({
           <div
             key={user.id}
             className={`p-4 rounded-lg border ${
-              isCurrentUser ? "bg-blue-50 border-blue-200" : "bg-white border-gray-200"
+              isCurrentUser ? "bg-violet-50 border-violet-200" : "bg-white/70 border-white/70 backdrop-blur-lg"
             } hover:shadow-md transition-shadow`}
           >
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-4 min-w-0">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-lg">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-600 flex items-center justify-center text-white font-bold text-lg">
                   {user.full_name?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase()}
                 </div>
                 <div className="min-w-0">

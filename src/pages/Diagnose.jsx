@@ -333,8 +333,8 @@ Be specific and practical.`,
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Plant Diagnosis</h2>
-        <p className="text-gray-600">Upload or capture a plant image for AI-powered analysis</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">AI Plant Diagnosis</h2>
+        <p className="text-gray-600">Upload a photo of your crop for instant AI analysis</p>
       </div>
 
       {/* Upload Section */}
@@ -352,7 +352,7 @@ Be specific and practical.`,
                 <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
                   <Button
                     onClick={capturePhoto}
-                    className="bg-green-600 hover:bg-green-700 gap-2"
+                    className="bg-violet-600 hover:bg-violet-700 gap-2"
                     size="lg"
                   >
                     <Camera className="w-5 h-5" />
@@ -388,10 +388,10 @@ Be specific and practical.`,
               </div>
             ) : (
               <div className="p-8">
-                <div className="border-2 border-dashed border-green-300 rounded-2xl p-12 text-center bg-green-50">
+                <div className="rounded-2xl border-2 border-dashed border-violet-200 p-12 text-center bg-violet-50/60">
                   <div className="flex justify-center gap-4 mb-6">
                     <div className="bg-white p-4 rounded-2xl shadow-md">
-                      <Leaf className="w-12 h-12 text-green-600" />
+                      <Leaf className="w-12 h-12 text-violet-600" />
                     </div>
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -403,7 +403,7 @@ Be specific and practical.`,
                   <div className="flex flex-col sm:flex-row gap-4 justify-center">
                     <Button
                       onClick={startCamera}
-                      className="bg-green-600 hover:bg-green-700 gap-2"
+                      className="bg-violet-600 hover:bg-violet-700 gap-2"
                       size="lg"
                     >
                       <Camera className="w-5 h-5" />
@@ -412,7 +412,7 @@ Be specific and practical.`,
                     <Button
                       onClick={() => fileInputRef.current?.click()}
                       variant="outline"
-                      className="gap-2 border-green-600 text-green-600 hover:bg-green-50"
+                      className="gap-2 border-violet-300 text-violet-700 hover:bg-violet-50"
                       size="lg"
                     >
                       <Upload className="w-5 h-5" />
@@ -435,7 +435,7 @@ Be specific and practical.`,
                 <Button
                   onClick={analyzePlant}
                   disabled={isAnalyzing}
-                  className="w-full bg-green-600 hover:bg-green-700 gap-2"
+                  className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
                   size="lg"
                 >
                   {isAnalyzing ? (

@@ -47,9 +47,9 @@ export default function FeedbackForm({ diagnosis, onSubmitted }) {
 
   if (submitted) {
     return (
-      <Card className="border-green-200 bg-green-50">
+      <Card className="border-violet-200 bg-violet-50/70">
         <CardContent className="p-6 text-center">
-          <ThumbsUp className="w-12 h-12 text-green-600 mx-auto mb-3" />
+          <ThumbsUp className="w-12 h-12 text-violet-600 mx-auto mb-3" />
           <h3 className="font-bold text-gray-900 mb-2">Thank You for Your Feedback!</h3>
           <p className="text-sm text-gray-600">
             Your input helps us improve diagnosis accuracy for everyone.
@@ -60,7 +60,7 @@ export default function FeedbackForm({ diagnosis, onSubmitted }) {
   }
 
   return (
-    <Card className="border-blue-200 bg-blue-50">
+    <Card className="border-violet-200 bg-violet-50/70">
       <CardContent className="p-6 space-y-4">
         <div>
           <h3 className="font-bold text-gray-900 mb-2">Rate This Diagnosis</h3>
@@ -139,7 +139,7 @@ export default function FeedbackForm({ diagnosis, onSubmitted }) {
           <Button
             onClick={handleSubmit}
             disabled={rating === 0 || submitMutation.isPending}
-            className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
+            className="w-full mt-4 bg-violet-600 hover:bg-violet-700"
           >
             {submitMutation.isPending ? (
               <>

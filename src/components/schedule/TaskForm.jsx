@@ -38,7 +38,7 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
 
   return (
     <Card className="border-none shadow-lg">
-      <CardHeader className="border-b bg-green-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <div className="flex items-center justify-between">
           <CardTitle>{task ? "Edit Task" : "Create New Task"}</CardTitle>
           <Button variant="ghost" size="icon" onClick={onCancel}>
@@ -211,7 +211,7 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
                   {formData.depends_on.map(depId => {
                     const depTask = allTasks?.find(t => t.id === depId);
                     return depTask ? (
-                      <div key={depId} className="flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">
+                      <div key={depId} className="flex items-center gap-1 bg-violet-100 text-violet-800 px-2 py-1 rounded text-sm">
                         {depTask.title}
                         <button
                           type="button"
@@ -219,7 +219,7 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
                             ...formData,
                             depends_on: formData.depends_on.filter(id => id !== depId)
                           })}
-                          className="ml-1 hover:text-blue-900"
+                          className="ml-1 hover:text-violet-900"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -237,7 +237,7 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">
+            <Button type="submit" disabled={isLoading} className="bg-violet-600 hover:bg-violet-700">
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />

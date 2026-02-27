@@ -61,8 +61,8 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3f5f9] grid md:grid-cols-2">
-      <div className="hidden md:flex bg-gradient-to-b from-[#13264f] to-[#233f7e] text-white p-12 items-center justify-center">
+    <div className="min-h-screen bg-transparent grid md:grid-cols-2">
+      <div className="hidden md:flex items-center justify-center bg-gradient-to-b from-[#2e1065] via-[#4c1d95] to-[#312e81] p-12 text-white">
         <div className="max-w-md text-center space-y-8">
           <div className="mx-auto bg-white w-16 h-16 rounded-xl flex items-center justify-center shadow">
             <Sprout className="text-[#1f4d9b]" />
@@ -72,14 +72,14 @@ export default function ResetPassword() {
             <br />
             Re-secure your account.
           </h1>
-          <p className="text-lg text-blue-100">
+          <p className="text-lg text-violet-100">
             Reset links expire quickly and invalidate old sessions after successful password updates.
           </p>
         </div>
       </div>
 
       <div className="flex items-center justify-center p-8">
-        <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/70 p-10 shadow-[0_20px_45px_rgba(0,0,0,0.08)] space-y-6">
+        <div className="w-full max-w-md rounded-3xl border border-white/75 bg-white/75 p-10 shadow-[0_20px_45px_rgba(109,40,217,0.18)] backdrop-blur-xl space-y-6">
           <div className="space-y-1">
             <h2 className="text-3xl font-semibold tracking-tight text-slate-900">Reset Password</h2>
             <p className="text-slate-500 text-sm">
@@ -97,7 +97,7 @@ export default function ResetPassword() {
               <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">
                 This reset link is invalid or expired.
               </div>
-              <Link className="text-sky-600 font-semibold hover:text-sky-700" to="/forgot-password">
+              <Link className="font-semibold text-violet-600 hover:text-violet-700" to="/forgot-password">
                 Request a new reset link
               </Link>
             </div>
@@ -134,7 +134,7 @@ export default function ResetPassword() {
               <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="w-full h-12 rounded-xl bg-[#0b1736] hover:bg-[#08122b] text-white font-semibold"
+                className="h-12 w-full rounded-xl bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 text-white font-semibold shadow-[0_8px_22px_rgba(124,58,237,0.32)] hover:brightness-110"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -151,7 +151,7 @@ export default function ResetPassword() {
           )}
 
           <p className="text-sm text-slate-500 text-center">
-            <Link className="text-sky-600 font-semibold hover:text-sky-700" to="/login">
+            <Link className="font-semibold text-violet-600 hover:text-violet-700" to="/login">
               Back to sign in
             </Link>
           </p>

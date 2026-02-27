@@ -68,7 +68,7 @@ export default function TaskList({ tasks, onEdit, onDelete, onStatusChange }) {
         return (
           <div
             key={task.id}
-            className="flex items-center gap-4 p-4 bg-white border rounded-xl hover:shadow-md transition-shadow"
+            className="flex items-center gap-4 rounded-xl border border-white/70 bg-white/70 p-4 backdrop-blur-lg transition-shadow hover:shadow-md"
           >
             <div className={`p-3 rounded-lg ${
               task.status === 'completed' ? 'bg-green-100' : 'bg-gray-100'

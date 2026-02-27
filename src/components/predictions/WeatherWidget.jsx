@@ -108,7 +108,7 @@ Be precise and use real current data.`,
 
   if (error) {
     return (
-      <Card className="border-none shadow-lg bg-gradient-to-br from-blue-500 to-blue-600">
+      <Card className="border-none shadow-lg bg-gradient-to-br from-violet-500 to-purple-600">
         <CardContent className="p-6 text-white">
           <div className="text-center">
             <p className="mb-4">{error}</p>
@@ -124,7 +124,7 @@ Be precise and use real current data.`,
 
   if (isLoading) {
     return (
-      <Card className="border-none shadow-lg bg-gradient-to-br from-blue-500 to-blue-600">
+      <Card className="border-none shadow-lg bg-gradient-to-br from-violet-500 to-purple-600">
         <CardContent className="p-6 text-white text-center">
           <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
           <p>Fetching weather for your location...</p>
@@ -134,7 +134,7 @@ Be precise and use real current data.`,
   }
 
   return (
-    <Card className="border-none shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 overflow-hidden">
+    <Card className="border-none shadow-lg bg-gradient-to-br from-violet-500 to-purple-600 overflow-hidden">
       <CardContent className="p-6 text-white">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -155,7 +155,7 @@ Be precise and use real current data.`,
           <span className="text-6xl">{getWeatherIcon(weather?.conditions)}</span>
           <div>
             <div className="text-5xl font-bold">{Math.round(weather?.temperature || 0)}°F</div>
-            <div className="text-blue-100 capitalize">{weather?.conditions}</div>
+            <div className="text-violet-100 capitalize">{weather?.conditions}</div>
           </div>
         </div>
 
@@ -163,22 +163,22 @@ Be precise and use real current data.`,
           <div className="bg-white/20 rounded-lg p-3 text-center backdrop-blur-sm">
             <Droplets className="w-5 h-5 mx-auto mb-1" />
             <div className="text-lg font-bold">{weather?.humidity || 0}%</div>
-            <div className="text-xs text-blue-100">Humidity</div>
+            <div className="text-xs text-violet-100">Humidity</div>
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center backdrop-blur-sm">
             <Wind className="w-5 h-5 mx-auto mb-1" />
             <div className="text-lg font-bold">{weather?.wind_speed || 0}</div>
-            <div className="text-xs text-blue-100">Wind mph</div>
+            <div className="text-xs text-violet-100">Wind mph</div>
           </div>
           <div className="bg-white/20 rounded-lg p-3 text-center backdrop-blur-sm">
             <Thermometer className="w-5 h-5 mx-auto mb-1" />
             <div className="text-lg font-bold">{Math.round(weather?.feels_like || weather?.temperature || 0)}°</div>
-            <div className="text-xs text-blue-100">Feels Like</div>
+            <div className="text-xs text-violet-100">Feels Like</div>
           </div>
         </div>
 
         {weather?.description && (
-          <p className="mt-4 text-sm text-blue-100 bg-white/10 rounded-lg p-3">
+          <p className="mt-4 rounded-lg bg-white/10 p-3 text-sm text-violet-100">
             {weather.description}
           </p>
         )}

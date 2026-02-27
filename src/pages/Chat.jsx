@@ -100,14 +100,14 @@ Be conversational, supportive, and encouraging.`;
 
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-180px)] flex flex-col">
-      <div className="bg-gradient-to-r from-green-600 to-green-500 rounded-t-2xl p-6 text-white shadow-lg">
+      <div className="glass-panel rounded-b-none bg-gradient-to-r from-violet-600/90 via-purple-600/85 to-fuchsia-600/85 p-6 text-white">
         <div className="flex items-center gap-3">
           <div className="bg-white/20 p-3 rounded-xl backdrop-blur-sm">
             <Sparkles className="w-6 h-6" />
           </div>
           <div>
             <h2 className="text-2xl font-bold">AI Farming Assistant</h2>
-            <p className="text-green-100 text-sm">Ask me anything about farming and plants</p>
+            <p className="text-violet-100 text-sm">Ask me anything about farming and plants</p>
           </div>
         </div>
       </div>
@@ -122,15 +122,15 @@ Be conversational, supportive, and encouraging.`;
               <div className={`max-w-[80%] ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                 {message.role === 'assistant' && (
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="bg-green-100 p-1.5 rounded-lg">
-                      <Leaf className="w-4 h-4 text-green-600" />
+                    <div className="bg-violet-100 p-1.5 rounded-lg">
+                      <Leaf className="w-4 h-4 text-violet-600" />
                     </div>
                     <span className="text-xs font-medium text-gray-600">AI Assistant</span>
                   </div>
                 )}
                 <div className={`rounded-2xl p-4 ${
                   message.role === 'user'
-                    ? 'bg-green-600 text-white'
+                    ? 'bg-violet-600 text-white'
                     : 'bg-gray-100 text-gray-900'
                 }`}>
                   {message.image && (
@@ -154,7 +154,7 @@ Be conversational, supportive, and encouraging.`;
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl p-4 flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-green-600" />
+                <Loader2 className="w-4 h-4 animate-spin text-violet-600" />
                 <span className="text-gray-600">Thinking...</span>
               </div>
             </div>
@@ -201,7 +201,7 @@ Be conversational, supportive, and encouraging.`;
             <Button
               onClick={sendMessage}
               disabled={isLoading || (!input.trim() && !uploadedImage)}
-              className="bg-green-600 hover:bg-green-700 shrink-0"
+              className="bg-violet-600 hover:bg-violet-700 shrink-0"
               size="icon"
             >
               {isLoading ? (

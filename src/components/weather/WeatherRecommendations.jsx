@@ -111,7 +111,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
     return (
       <Card className="border-none shadow-lg">
         <CardContent className="p-8 text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Generating AI recommendations...</p>
         </CardContent>
       </Card>
@@ -122,9 +122,9 @@ Be specific and actionable. Consider real-time weather patterns.`,
 
   return (
     <Card className="border-none shadow-lg">
-      <CardHeader className="border-b bg-blue-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <CardTitle className="flex items-center gap-2">
-          <Lightbulb className="w-5 h-5 text-blue-600" />
+          <Lightbulb className="w-5 h-5 text-violet-600" />
           AI Weather Recommendations
         </CardTitle>
       </CardHeader>
@@ -134,7 +134,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Droplets className="w-5 h-5 text-blue-600" />
+                <Droplets className="w-5 h-5 text-violet-600" />
                 <h3 className="font-semibold text-gray-900">Irrigation</h3>
               </div>
               <Badge className={getPriorityColor(recommendations.irrigation.priority)}>
@@ -143,7 +143,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
             </div>
             <p className="text-gray-700">{recommendations.irrigation.recommendation}</p>
             {recommendations.irrigation.timing && (
-              <p className="text-sm text-blue-600">⏰ {recommendations.irrigation.timing}</p>
+              <p className="text-sm text-violet-600">⏰ {recommendations.irrigation.timing}</p>
             )}
           </div>
         )}
@@ -172,7 +172,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sprout className="w-5 h-5 text-green-600" />
+                <Sprout className="w-5 h-5 text-violet-600" />
                 <h3 className="font-semibold text-gray-900">Planting/Harvesting</h3>
               </div>
               <Badge className={getPriorityColor(recommendations.planting_harvesting.priority)}>
@@ -181,7 +181,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
             </div>
             <p className="text-gray-700">{recommendations.planting_harvesting.recommendation}</p>
             {recommendations.planting_harvesting.timing && (
-              <p className="text-sm text-green-600">⏰ {recommendations.planting_harvesting.timing}</p>
+              <p className="text-sm text-violet-600">⏰ {recommendations.planting_harvesting.timing}</p>
             )}
           </div>
         )}
@@ -190,12 +190,12 @@ Be specific and actionable. Consider real-time weather patterns.`,
         {recommendations.protective_measures && recommendations.protective_measures.length > 0 && (
           <div className="border-t pt-4">
             <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-purple-600" />
+              <Calendar className="w-5 h-5 text-violet-600" />
               Protective Measures Needed
             </h3>
             <div className="space-y-2">
               {recommendations.protective_measures.map((measure, idx) => (
-                <div key={idx} className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                <div key={idx} className="p-3 bg-violet-50/70 rounded-lg border border-violet-200/80">
                   <div className="flex items-start justify-between mb-1">
                     <p className="font-medium text-gray-900">{measure.measure}</p>
                     <Badge className={getPriorityColor(measure.urgency)}>
@@ -216,7 +216,7 @@ Be specific and actionable. Consider real-time weather patterns.`,
             <ul className="space-y-2">
               {recommendations.priority_tasks.map((task, idx) => (
                 <li key={idx} className="flex items-start gap-2 text-gray-700">
-                  <span className="text-blue-600 mt-1">✓</span>
+                  <span className="text-violet-600 mt-1">✓</span>
                   {task}
                 </li>
               ))}

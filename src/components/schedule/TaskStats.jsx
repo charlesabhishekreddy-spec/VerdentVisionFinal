@@ -7,25 +7,25 @@ export default function TaskStats({ tasks }) {
       label: "Total Tasks",
       value: tasks.length,
       icon: Clock,
-      color: "bg-blue-500"
+      color: "bg-violet-500"
     },
     {
       label: "Pending",
       value: tasks.filter(t => t.status === 'pending').length,
       icon: Clock,
-      color: "bg-orange-500"
+      color: "bg-fuchsia-500"
     },
     {
       label: "In Progress",
       value: tasks.filter(t => t.status === 'in_progress').length,
       icon: Play,
-      color: "bg-purple-500"
+      color: "bg-indigo-500"
     },
     {
       label: "Completed",
       value: tasks.filter(t => t.status === 'completed').length,
       icon: CheckCircle,
-      color: "bg-green-500"
+      color: "bg-violet-600"
     }
   ];
 

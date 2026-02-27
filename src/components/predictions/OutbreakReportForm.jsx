@@ -88,10 +88,10 @@ export default function OutbreakReportForm({ onClose }) {
   ];
 
   return (
-    <Card className="border-2 border-orange-300 shadow-lg">
-      <CardHeader className="border-b bg-orange-50">
+    <Card className="border-2 border-violet-300/70 shadow-lg">
+      <CardHeader className="border-b bg-violet-50/70">
         <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-orange-800">
+          <CardTitle className="flex items-center gap-2 text-violet-800">
             <AlertTriangle className="w-5 h-5" />
             Report Outbreak
           </CardTitle>
@@ -202,7 +202,7 @@ export default function OutbreakReportForm({ onClose }) {
             <Button
               type="submit"
               disabled={!formData.pest_or_disease || !formData.location_name || createMutation.isPending}
-              className="bg-orange-600 hover:bg-orange-700 gap-2"
+              className="bg-violet-600 hover:bg-violet-700 gap-2"
             >
               {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Submit Report

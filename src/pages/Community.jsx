@@ -56,14 +56,14 @@ export default function Community() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Users className="w-7 h-7 text-green-600" />
+            <Users className="w-7 h-7 text-violet-600" />
             Community Forum
           </h2>
           <p className="text-gray-600">Share experiences and learn from fellow farmers</p>
         </div>
         <Button
           onClick={() => setShowForm(true)}
-          className="bg-green-600 hover:bg-green-700 gap-2"
+          className="bg-violet-600 hover:bg-violet-700 gap-2"
         >
           <Plus className="w-5 h-5" />
           New Post
@@ -81,7 +81,7 @@ export default function Community() {
       )}
 
       <Card className="border-none shadow-lg">
-        <CardHeader className="border-b">
+        <CardHeader className="border-b bg-violet-50/60">
           <div className="flex flex-wrap gap-2">
             {categories.map(cat => (
               <Button
@@ -89,7 +89,7 @@ export default function Community() {
                 onClick={() => setSelectedCategory(cat.value)}
                 variant={selectedCategory === cat.value ? "default" : "outline"}
                 size="sm"
-                className={selectedCategory === cat.value ? "bg-green-600 hover:bg-green-700" : ""}
+                className={selectedCategory === cat.value ? "bg-violet-600 hover:bg-violet-700" : ""}
               >
                 {cat.label}
               </Button>

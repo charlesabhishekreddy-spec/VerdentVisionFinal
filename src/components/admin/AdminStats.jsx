@@ -7,14 +7,14 @@ export default function AdminStats({ users, diagnoses, tasks, posts }) {
       label: "Total Users",
       value: users.length,
       icon: Users,
-      color: "from-blue-500 to-blue-600",
+      color: "from-violet-500 to-violet-600",
       change: "+12% this month"
     },
     {
       label: "Plant Diagnoses",
       value: diagnoses.length,
       icon: Activity,
-      color: "from-green-500 to-green-600",
+      color: "from-purple-500 to-fuchsia-600",
       change: `${diagnoses.filter(d => {
         const date = new Date(d.created_date);
         const now = new Date();
@@ -25,14 +25,14 @@ export default function AdminStats({ users, diagnoses, tasks, posts }) {
       label: "Active Tasks",
       value: tasks.filter(t => t.status === 'pending' || t.status === 'in_progress').length,
       icon: Calendar,
-      color: "from-amber-500 to-amber-600",
+      color: "from-indigo-500 to-violet-600",
       change: `${tasks.length} total`
     },
     {
       label: "Forum Posts",
       value: posts.length,
       icon: MessageSquare,
-      color: "from-purple-500 to-purple-600",
+      color: "from-fuchsia-500 to-violet-600",
       change: `${posts.filter(p => {
         const date = new Date(p.created_date);
         const now = new Date();

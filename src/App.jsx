@@ -26,8 +26,8 @@ const RoutedApp = () => {
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-100 to-cyan-100">
-        <div className="w-10 h-10 border-4 border-white/70 border-t-emerald-600 rounded-full animate-spin"></div>
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-violet-100 via-purple-100 to-fuchsia-100">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/70 border-t-violet-600"></div>
       </div>
     );
   }

@@ -84,10 +84,10 @@ export default function RiskSummary({ predictions }) {
       )}
 
       {predictions.length > 0 && (
-        <Card className="border-none shadow-md bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Card className="border-none shadow-md bg-gradient-to-r from-violet-50/90 to-purple-100/70">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-violet-600" />
               <div className="text-sm text-gray-700">
                 <strong>{predictions.length} active prediction{predictions.length !== 1 ? 's' : ''}</strong>
                 {' '}based on recent weather patterns and historical disease data

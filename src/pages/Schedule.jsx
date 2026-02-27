@@ -78,7 +78,7 @@ export default function Schedule() {
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Task Schedule</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Schedule</h2>
           <p className="text-gray-600">Manage your farming tasks and activities</p>
         </div>
         <div className="flex gap-2">
@@ -95,7 +95,7 @@ export default function Schedule() {
               setEditingTask(null);
               setShowForm(true);
             }}
-            className="bg-green-600 hover:bg-green-700 gap-2"
+            className="bg-violet-600 hover:bg-violet-700 gap-2"
           >
             <Plus className="w-5 h-5" />
             Add Task
@@ -126,7 +126,7 @@ export default function Schedule() {
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-green-600" />
+              <CalendarIcon className="w-5 h-5 text-violet-600" />
               All Tasks
             </CardTitle>
             <div className="flex gap-2 flex-wrap">
@@ -136,7 +136,7 @@ export default function Schedule() {
                   onClick={() => setFilterStatus(status)}
                   variant={filterStatus === status ? "default" : "outline"}
                   size="sm"
-                  className={filterStatus === status ? "bg-green-600 hover:bg-green-700" : ""}
+                  className={filterStatus === status ? "bg-violet-600 hover:bg-violet-700" : ""}
                 >
                   {status.replace('_', ' ')}
                 </Button>

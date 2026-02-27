@@ -55,7 +55,7 @@ export default function Admin() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <Activity className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Activity className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-slate-700">Loading admin panel...</p>
         </div>
       </div>
@@ -90,13 +90,13 @@ export default function Admin() {
       <div className="glass-panel p-6 flex items-center justify-between">
         <div>
           <h2 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-            <Shield className="w-8 h-8 text-blue-600" /> Admin Controls
+            <Shield className="w-8 h-8 text-violet-600" /> Admin Controls
           </h2>
           <p className="text-slate-600 mt-1">
             Manage user roles, account status, and operational activity with enterprise controls.
           </p>
         </div>
-        <Button onClick={() => setShowInviteForm(!showInviteForm)} className="bg-blue-600/90 hover:bg-blue-700 gap-2">
+        <Button onClick={() => setShowInviteForm(!showInviteForm)} className="bg-violet-600/90 hover:bg-violet-700 gap-2">
           <UserPlus className="w-5 h-5" /> Invite User
         </Button>
       </div>
@@ -108,7 +108,7 @@ export default function Admin() {
       <Card className="glass-panel border-white/50 shadow-xl">
         <CardHeader className="border-b border-white/40 bg-white/20 rounded-t-2xl">
           <CardTitle className="flex items-center gap-2 text-slate-800">
-            <Users className="w-5 h-5 text-blue-600" /> User Management ({users.length} users)
+            <Users className="w-5 h-5 text-violet-600" /> User Management ({users.length} users)
           </CardTitle>
         </CardHeader>
         <CardContent className="p-6">

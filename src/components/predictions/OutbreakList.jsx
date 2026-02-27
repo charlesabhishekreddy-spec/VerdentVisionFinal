@@ -40,8 +40,8 @@ export default function OutbreakList({ reports }) {
   return (
     <div className="space-y-3">
       {reports.map((report) => (
-        <Card key={report.id} className={`border-l-4 shadow-md ${
-          report.verified ? 'border-l-red-500' : 'border-l-orange-400'
+        <Card key={report.id} className={`border-l-4 border-white/70 bg-white/70 backdrop-blur-lg shadow-md ${
+          report.verified ? 'border-l-red-500' : 'border-l-violet-400'
         }`}>
           <CardContent className="p-4">
             <div className="flex items-start gap-4">

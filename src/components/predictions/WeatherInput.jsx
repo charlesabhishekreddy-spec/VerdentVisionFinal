@@ -44,10 +44,10 @@ export default function WeatherInput({ onClose }) {
 
   return (
     <Card className="border-none shadow-lg">
-      <CardHeader className="border-b bg-blue-50">
+      <CardHeader className="border-b bg-violet-50/70">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
-            <CloudRain className="w-5 h-5 text-blue-600" />
+            <CloudRain className="w-5 h-5 text-violet-600" />
             Log Weather Data
           </CardTitle>
           <Button variant="ghost" size="icon" onClick={onClose}>
@@ -163,7 +163,7 @@ export default function WeatherInput({ onClose }) {
             <Button 
               type="submit" 
               disabled={createMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {createMutation.isPending ? (
                 <>
