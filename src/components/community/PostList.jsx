@@ -64,7 +64,7 @@ export default function PostList({ posts }) {
             <div className="grid grid-cols-3 gap-2 mb-3">
               {post.images.slice(0, 3).map((img, index) => (
                 <img
-                  key={index}
+                  key={img || index}
                   src={img}
                   alt=""
                   className="w-full h-24 object-cover rounded-lg"

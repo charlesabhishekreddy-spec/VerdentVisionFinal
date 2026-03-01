@@ -179,8 +179,8 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-4">
-                {timeline.timeline?.map((week, index) => (
-                  <div key={index} className="relative pl-8 pb-6 border-l-2 border-violet-200 last:border-0">
+                {timeline.timeline?.map((week) => (
+                  <div key={week.week} className="relative pl-8 pb-6 border-l-2 border-violet-200 last:border-0">
                     <div className="absolute left-0 top-0 -translate-x-1/2 bg-violet-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold text-sm">
                       {week.week}
                     </div>
@@ -191,7 +191,7 @@ Format as a structured timeline with specific weeks and actionable tasks.`,
                       </div>
                       <div className="space-y-2 mb-3">
                         {week.activities?.map((activity, i) => (
-                          <div key={i} className="flex items-start gap-2">
+                          <div key={activity || i} className="flex items-start gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-violet-500 mt-2" />
                             <span className="text-sm text-gray-700">{activity}</span>
                           </div>

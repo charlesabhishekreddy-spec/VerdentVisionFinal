@@ -9,6 +9,7 @@ import DiagnosisHistory from "../components/profile/DiagnosisHistory.jsx";
 import TreatmentHistory from "../components/profile/TreatmentHistory.jsx";
 import DeviceSessions from "../components/security/DeviceSessions.jsx";
 import PasswordSecurityCard from "../components/security/PasswordSecurityCard.jsx";
+import PerformanceInsights from "../components/profile/PerformanceInsights.jsx";
 
 export default function Profile() {
   const { user, logout } = useAuth();
@@ -26,6 +27,11 @@ export default function Profile() {
   const { data: posts = [] } = useQuery({
     queryKey: ['user-posts'],
     queryFn: () => appClient.entities.ForumPost.list('-created_date'),
+  });
+
+  const { data: cropPlans = [] } = useQuery({
+    queryKey: ['user-crop-plans'],
+    queryFn: () => appClient.entities.CropPlan.list('-created_date'),
   });
 
   const handleLogout = async () => {
@@ -76,6 +82,13 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
+
+      <PerformanceInsights
+        diagnoses={diagnoses}
+        tasks={tasks}
+        posts={posts}
+        cropPlans={cropPlans}
+      />
 
       {/* Farm Preferences */}
       <FarmPreferences user={user} />

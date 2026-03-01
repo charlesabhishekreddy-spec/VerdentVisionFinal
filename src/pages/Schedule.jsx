@@ -14,7 +14,7 @@ export default function Schedule() {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [filterStatus, setFilterStatus] = useState("all");
-  const [showReports, setShowReports] = useState(false);
+  const [showReports, setShowReports] = useState(true);
   const queryClient = useQueryClient();
 
   const { data: tasks = [] } = useQuery({

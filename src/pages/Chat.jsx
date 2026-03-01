@@ -9,6 +9,7 @@ import ReactMarkdown from "react-markdown";
 export default function Chat() {
   const [messages, setMessages] = useState([
     {
+      id: "initial",
       role: "assistant",
       content: "Hello! I'm your AI farming assistant. Ask me anything about plants, diseases, fertilizers, pest control, soil health, or farming techniques. I'm here to help! 🌱"
     }
@@ -43,6 +44,7 @@ export default function Chat() {
     if (!input.trim() && !uploadedImage) return;
 
     const userMessage = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
       role: "user",
       content: input,
       image: uploadedImage
@@ -55,7 +57,9 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const conversationHistory = messages.map(m => 
+      // build prompt from the updated history including the new user message
+      const allMessages = [...messages, userMessage];
+      const conversationHistory = allMessages.map(m =>
         `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
       ).join('\n');
 
@@ -85,6 +89,7 @@ Be conversational, supportive, and encouraging.`;
       });
 
       setMessages(prev => [...prev, {
+        id: crypto.randomUUID ? crypto.randomUUID() : (Date.now()+Math.random()).toString(),
         role: "assistant",
         content: response
       }]);
@@ -193,7 +198,7 @@ Be conversational, supportive, and encouraging.`;
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
+              onKeyDown={(e) => e.key === 'Enter' && !isLoading && sendMessage()}
               placeholder="Ask about plants, diseases, fertilizers..."
               disabled={isLoading}
               className="flex-1"

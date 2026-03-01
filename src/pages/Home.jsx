@@ -117,10 +117,10 @@ export default function Home() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((stat, index) => {
+        {stats.map((stat) => {
           const Icon = stat.icon;
           return (
-            <Card key={index} className="border-none shadow-md hover:shadow-lg transition-shadow">
+            <Card key={stat.title || stat.id || Math.random()} className="border-none shadow-md hover:shadow-lg transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className={`${stat.color} p-2 rounded-lg`}>
@@ -140,10 +140,10 @@ export default function Home() {
       <div>
         <h3 className="mb-4 text-lg font-semibold text-gray-900">Quick Actions</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => {
+          {quickActions.map((action) => {
             const Icon = action.icon;
             return (
-              <Link key={index} to={createPageUrl(action.path)}>
+              <Link key={action.path || action.title} to={createPageUrl(action.path)}>
                 <Card className="border-none hover:scale-105 transition-transform cursor-pointer overflow-hidden h-full">
                   <div className={`bg-gradient-to-br ${action.color} p-6 text-white h-full flex flex-col items-center justify-center gap-2`}>
                     <Icon className="w-8 h-8" />
