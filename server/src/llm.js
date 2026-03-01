@@ -457,12 +457,25 @@ const imageSignal = async (fileUrls, options) => {
   };
 };
 
-const fallbackPlant = (signal, prompt = "") => {
-  const hints = `${signal?.fileName || ""} ${String(prompt || "")}`.toLowerCase();
+const fallbackPlant = (signal) => {
+  if (!signal) {
+    return {
+      is_plant: false,
+      rejection_reason: "Vision analysis is unavailable or image signal could not be read.",
+      plant_part: "unknown",
+      plant_name: "Not verified",
+      scientific_name: "N/A",
+      plant_family: "N/A",
+      leaf_description: "No reliable botanical features could be extracted in fallback mode.",
+      confidence: 22,
+      identifying_features: ["No reliable image signal"],
+    };
+  }
+
+  const fileHints = String(signal.fileName || "").toLowerCase();
   const looksNonPlant =
-    !signal ||
-    signal.byteLength < 9000 ||
-    /\b(anime|cartoon|meme|character|luffy|naruto|screenshot|logo|vehicle|car|building)\b/.test(hints);
+    signal.byteLength < 2500 ||
+    /\b(anime|cartoon|meme|character|luffy|naruto|screenshot|logo|vehicle|car|building)\b/.test(fileHints);
   if (looksNonPlant) {
     return {
       is_plant: false,
@@ -477,125 +490,44 @@ const fallbackPlant = (signal, prompt = "") => {
     };
   }
 
-  const candidates = [
-    {
-      plant_name: "Tomato",
-      scientific_name: "Solanum lycopersicum",
-      plant_family: "Solanaceae",
-      leaf_description: "Compound serrated leaflets with pinnate venation.",
-      identifying_features: ["Serrated leaflet margins", "Compound structure", "Visible pinnate venation"],
-    },
-    {
-      plant_name: "Potato",
-      scientific_name: "Solanum tuberosum",
-      plant_family: "Solanaceae",
-      leaf_description: "Broad leaflet architecture with compound arrangement.",
-      identifying_features: ["Broad oval leaflet", "Compound leaf arrangement", "Matte texture"],
-    },
-    {
-      plant_name: "Pepper",
-      scientific_name: "Capsicum annuum",
-      plant_family: "Solanaceae",
-      leaf_description: "Simple ovate blade with smooth margins and pointed tip.",
-      identifying_features: ["Simple leaf blade", "Smooth margin", "Acute apex"],
-    },
-    {
-      plant_name: "Cucumber",
-      scientific_name: "Cucumis sativus",
-      plant_family: "Cucurbitaceae",
-      leaf_description: "Lobed rough-textured leaf with palmate venation.",
-      identifying_features: ["Palmate veins", "Lobed margin", "Rough surface"],
-    },
-  ];
-  const seed = Number.parseInt(signal.hash.slice(0, 8), 16);
-  const pick = candidates[Number.isFinite(seed) ? seed % candidates.length : 0];
   return {
     is_plant: true,
     rejection_reason: "",
     plant_part: "leaf",
-    ...pick,
-    confidence: 58 + (Number.parseInt(signal.hash.slice(8, 10), 16) % 35),
+    plant_name: "Unknown crop",
+    scientific_name: "Unknown species",
+    plant_family: "Unknown",
+    leaf_description: "Plant structure detected, but fallback mode cannot provide reliable species classification.",
+    confidence: 60,
+    identifying_features: ["Leaf-like structure present", "Species-level certainty unavailable in fallback mode"],
   };
 };
 
-const fallbackDisease = (signal, prompt = "") => {
+const fallbackDisease = (signal) => {
   if (!signal) {
     return {
-      disease_name: "Uncertain - insufficient image evidence",
+      disease_name: "Uncertain disease pattern",
       disease_type: "uncertain",
       infection_level: 0,
       severity: "low",
       symptoms: [],
       pathogen_signs: [],
       is_healthy: false,
-      confidence: 24,
-      analysis_notes: "No image evidence available for pathology.",
+      confidence: 35,
+      analysis_notes: "Vision fallback has insufficient evidence for disease classification.",
     };
   }
-  const healthyRoll = Number.parseInt(signal.hash.slice(10, 12), 16) % 100;
-  if (healthyRoll < 18) {
-    return {
-      disease_name: "Healthy - No Disease Detected",
-      disease_type: "none",
-      infection_level: 0,
-      severity: "low",
-      symptoms: ["No clear lesion pattern detected"],
-      pathogen_signs: [],
-      is_healthy: true,
-      confidence: 72,
-      analysis_notes: "No high-confidence disease markers visible.",
-    };
-  }
-  const isSolanaceae = /tomato|potato|pepper|solanum|capsicum/i.test(String(prompt || ""));
-  const candidates = isSolanaceae
-    ? [
-        {
-          disease_name: "Early Blight",
-          disease_type: "fungal",
-          symptoms: ["Circular brown lesions", "Yellow halos around lesions", "Lower leaf necrosis"],
-          pathogen_signs: ["Concentric lesion rings"],
-        },
-        {
-          disease_name: "Septoria Leaf Spot",
-          disease_type: "fungal",
-          symptoms: ["Small tan spots", "Dark lesion borders", "Progressive yellowing"],
-          pathogen_signs: ["Dark pycnidia dots"],
-        },
-        {
-          disease_name: "Bacterial Spot",
-          disease_type: "bacterial",
-          symptoms: ["Angular dark lesions", "Leaf edge scorch", "Shot-hole appearance"],
-          pathogen_signs: ["Water-soaked margins"],
-        },
-      ]
-    : [
-        {
-          disease_name: "Fungal Leaf Spot Complex",
-          disease_type: "fungal",
-          symptoms: ["Brown necrotic spotting", "Localized chlorosis", "Spot expansion"],
-          pathogen_signs: ["Lesion ring patterns"],
-        },
-        {
-          disease_name: "Nutrient Stress Pattern",
-          disease_type: "nutrient",
-          symptoms: ["Interveinal chlorosis", "Marginal discoloration", "Uneven leaf tone"],
-          pathogen_signs: [],
-        },
-      ];
 
-  const seed = Number.parseInt(signal.hash.slice(12, 16), 16);
-  const pick = candidates[Number.isFinite(seed) ? seed % candidates.length : 0];
-  const infection = 18 + (Number.parseInt(signal.hash.slice(16, 18), 16) % 71);
   return {
-    disease_name: pick.disease_name,
-    disease_type: pick.disease_type,
-    infection_level: infection,
-    severity: infection <= 30 ? "low" : infection <= 60 ? "medium" : infection <= 80 ? "high" : "critical",
-    symptoms: pick.symptoms,
-    pathogen_signs: pick.pathogen_signs,
+    disease_name: "Uncertain disease pattern",
+    disease_type: "uncertain",
+    infection_level: 0,
+    severity: "low",
+    symptoms: ["Fallback mode could not classify disease from image with sufficient reliability."],
+    pathogen_signs: [],
     is_healthy: false,
-    confidence: 54 + (Number.parseInt(signal.hash.slice(18, 20), 16) % 34),
-    analysis_notes: "Fallback diagnosis generated from deterministic image fingerprint.",
+    confidence: 48,
+    analysis_notes: "Fallback mode abstained from disease diagnosis to avoid incorrect classification.",
   };
 };
 
@@ -610,9 +542,9 @@ const fallbackVerify = (signal, prompt = "") => {
     };
   }
   const base = 58 + (Number.parseInt(signal.hash.slice(20, 22), 16) % 34);
-  const shouldAbstain = base < 68 || /uncertain|insufficient|non-plant/i.test(String(prompt || ""));
+  const shouldAbstain = base < 62 || /uncertain|insufficient|non-plant/i.test(String(prompt || ""));
   return {
-    verified: !shouldAbstain && base >= 72,
+    verified: !shouldAbstain && base >= 68,
     should_abstain: shouldAbstain,
     final_confidence: clamp(base, 0, 100),
     corrections: shouldAbstain
@@ -693,7 +625,7 @@ export async function buildLlmResponse(payload = {}, options = {}) {
 
   const signal = await imageSignal(fileUrls, options);
   let out = null;
-  if (type === "plant") out = fallbackPlant(signal, prompt);
+  if (type === "plant") out = fallbackPlant(signal);
   else if (type === "disease") out = fallbackDisease(signal, prompt);
   else if (type === "verify") out = fallbackVerify(signal, prompt);
   else if (type === "treatments") out = treatments();

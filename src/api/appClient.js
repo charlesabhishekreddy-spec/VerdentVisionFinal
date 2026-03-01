@@ -88,8 +88,10 @@ const request = async (path, { method = "GET", body, useCsrf = true } = {}) => {
 
   const payload = await readJsonSafe(response);
   if (!response.ok) {
+    const apiMessage = payload?.error?.message || payload?.message || `Request failed with status ${response.status}.`;
+    const apiCode = payload?.error?.code;
     throw new Error(
-      payload?.error?.message || payload?.message || `Request failed with status ${response.status}.`
+      apiCode ? `${apiMessage} (${apiCode})` : apiMessage
     );
   }
 
@@ -303,6 +305,13 @@ export const appClient = {
       return request("/ai/farm-advice", {
         method: "POST",
         body: { prompt },
+      });
+    },
+
+    async diagnosePlant(fileUrl) {
+      return request("/ai/diagnose-plant", {
+        method: "POST",
+        body: { file_url: fileUrl },
       });
     },
   },

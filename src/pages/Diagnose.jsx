@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { appClient } from "@/api/appClient";
 import { useQueryClient } from "@tanstack/react-query";
+import { appClient } from "@/api/appClient";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, Loader2, AlertCircle, Leaf, ShieldCheck } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Camera, Upload, Loader2, AlertCircle, Leaf, ShieldCheck } from "lucide-react";
 import DiagnosisResult from "../components/diagnose/DiagnosisResult.jsx";
 import TreatmentRecommendations from "../components/diagnose/TreatmentRecommendations.jsx";
 
 const MAX_UPLOAD_MB = 8;
-const MIN_RELIABLE_CONFIDENCE = 68;
+const MIN_RELIABLE_CONFIDENCE = 65;
 
 const toNumber = (value, fallback = 0) => {
   const parsed = Number.parseFloat(String(value ?? ""));
@@ -18,16 +18,17 @@ const toNumber = (value, fallback = 0) => {
 
 const normalizeText = (value) => String(value || "").trim().toLowerCase();
 
-const toSeverity = (value) => {
-  const normalized = normalizeText(value);
-  if (["low", "medium", "high", "critical"].includes(normalized)) return normalized;
-  return "medium";
-};
-
 const revokeObjectUrl = (url) => {
   if (typeof url === "string" && url.startsWith("blob:")) {
     URL.revokeObjectURL(url);
   }
+};
+
+const deriveSeverity = (infectionLevel) => {
+  if (infectionLevel <= 20) return "low";
+  if (infectionLevel <= 50) return "medium";
+  if (infectionLevel <= 80) return "high";
+  return "critical";
 };
 
 export default function Diagnose() {
@@ -41,6 +42,7 @@ export default function Diagnose() {
   const [stream, setStream] = useState(null);
   const [cameraLoading, setCameraLoading] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
+
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
   const queryClient = useQueryClient();
@@ -59,6 +61,7 @@ export default function Diagnose() {
     if (!showCamera || !stream || !videoRef.current) return;
     const video = videoRef.current;
     let settled = false;
+
     const timeout = setTimeout(() => {
       if (!settled) {
         setCameraLoading(false);
@@ -66,7 +69,7 @@ export default function Diagnose() {
       }
     }, 5000);
 
-    const onLoadedMetadata = async () => {
+    const onLoaded = async () => {
       try {
         await video.play();
       } catch (playError) {
@@ -86,13 +89,18 @@ export default function Diagnose() {
       clearTimeout(timeout);
     };
 
-    video.srcObject = stream;
-    video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("loadedmetadata", onLoaded);
+    video.addEventListener("loadeddata", onLoaded);
     video.addEventListener("error", onVideoError);
+    video.srcObject = stream;
+    if (video.readyState >= 1) {
+      void onLoaded();
+    }
 
     return () => {
       clearTimeout(timeout);
-      video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("loadedmetadata", onLoaded);
+      video.removeEventListener("loadeddata", onLoaded);
       video.removeEventListener("error", onVideoError);
       video.srcObject = null;
     };
@@ -104,15 +112,14 @@ export default function Diagnose() {
     setSelectedFile(null);
   };
 
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
+  const handleFileSelect = (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
       setError("Only image files are supported.");
       return;
     }
-    const maxBytes = MAX_UPLOAD_MB * 1024 * 1024;
-    if (file.size > maxBytes) {
+    if (file.size > MAX_UPLOAD_MB * 1024 * 1024) {
       setError(`Image is too large. Please upload an image under ${MAX_UPLOAD_MB}MB.`);
       return;
     }
@@ -120,8 +127,8 @@ export default function Diagnose() {
     clearSelectedImage();
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
-    setError(null);
     setDiagnosisResult(null);
+    setError(null);
   };
 
   const startCamera = async () => {
@@ -140,12 +147,12 @@ export default function Diagnose() {
       setStream(mediaStream);
       setShowCamera(true);
       setError(null);
-    } catch (err) {
+    } catch (cameraError) {
       setCameraLoading(false);
       setCameraReady(false);
       setShowCamera(false);
       setError("Unable to access camera. Please check permissions or use file upload.");
-      console.error("Camera error:", err);
+      console.error("Camera error:", cameraError);
     }
   };
 
@@ -180,8 +187,8 @@ export default function Diagnose() {
       setError("Unable to process captured image.");
       return;
     }
-    ctx.drawImage(videoRef.current, 0, 0);
 
+    ctx.drawImage(videoRef.current, 0, 0);
     canvas.toBlob(
       (blob) => {
         if (!blob) {
@@ -192,8 +199,8 @@ export default function Diagnose() {
         clearSelectedImage();
         setSelectedFile(file);
         setPreviewUrl(URL.createObjectURL(file));
-        setError(null);
         setDiagnosisResult(null);
+        setError(null);
         stopCamera();
       },
       "image/jpeg",
@@ -208,176 +215,60 @@ export default function Diagnose() {
     }
 
     setIsAnalyzing(true);
-    setAnalysisStep("Uploading image");
     setError(null);
 
     try {
-      const { file_url: fileUrl } = await appClient.integrations.Core.UploadFile({ file: selectedFile });
+      setAnalysisStep("Uploading image");
+      const upload = await appClient.integrations.Core.UploadFile({ file: selectedFile });
+      const fileUrl = String(upload?.file_url || "");
+      if (!fileUrl || fileUrl.startsWith("blob:")) {
+        throw new Error("Image upload failed. Please retry.");
+      }
 
-      setAnalysisStep("Loading crop reference data");
-      const plantDatabase = await appClient.entities.PlantDatabase.list("", 300);
-      const plantNames = plantDatabase
-        .slice(0, 140)
-        .map((p) => `${p.common_name} (${p.scientific_name})`)
-        .join(", ");
+      setAnalysisStep("Running diagnosis engine");
+      const result = await appClient.ai.diagnosePlant(fileUrl);
 
-      setAnalysisStep("Validating plant presence");
-      const plantIdentification = await appClient.integrations.Core.InvokeLLM({
-        prompt: `You are VerdentVision Plant Verification Engine.
-
-Your first task is strict validation:
-1) Confirm whether this image is a real plant crop image.
-2) If image is non-plant, cartoon/anime, UI screenshot, or unrelated object, mark is_plant=false.
-3) If confidence is low, abstain and explain the rejection reason.
-
-Reference plant database:
-${plantNames}
-
-Return concise, factual output only.`,
-        file_urls: [fileUrl],
-        response_json_schema: {
-          type: "object",
-          properties: {
-            is_plant: { type: "boolean" },
-            rejection_reason: { type: "string" },
-            plant_part: {
-              type: "string",
-              enum: ["leaf", "fruit", "stem", "whole_plant", "unknown"],
-            },
-            plant_name: { type: "string" },
-            scientific_name: { type: "string" },
-            plant_family: { type: "string" },
-            leaf_description: { type: "string" },
-            confidence: { type: "number" },
-            identifying_features: { type: "array", items: { type: "string" } },
-          },
-        },
-      });
-
-      const plantConfidence = Math.round(toNumber(plantIdentification?.confidence, 0));
-      if (!plantIdentification?.is_plant || plantConfidence < 45) {
-        const reason =
-          plantIdentification?.rejection_reason ||
-          "The image does not appear to be a clear plant/crop photo.";
+      if (!result?.is_plant) {
         setDiagnosisResult(null);
-        setError(`${reason} Upload a clear leaf or whole-plant image and try again.`);
+        setError(result?.rejection_reason || "This does not appear to be a plant image.");
         return;
       }
 
-      const identifiedCommon = normalizeText(plantIdentification?.plant_name);
-      const identifiedScientific = normalizeText(plantIdentification?.scientific_name);
-      const hasCommonMatch = Boolean(identifiedCommon);
-      const hasScientificMatch = Boolean(identifiedScientific);
+      const infectionLevel = Math.max(0, Math.min(100, Math.round(toNumber(result.infection_level, 0))));
+      const confidenceScore = Math.max(0, Math.min(100, Math.round(toNumber(result.confidence_score, 0))));
+      const isHealthy = Boolean(result.is_healthy);
+      const requiresManualReview =
+        Boolean(result.requires_manual_review) || confidenceScore < MIN_RELIABLE_CONFIDENCE;
+
+      setAnalysisStep("Loading plant care references");
+      const plantDatabase = await appClient.entities.PlantDatabase.list("", 300);
+      const plantName = normalizeText(result.plant_name);
+      const scientificName = normalizeText(result.scientific_name);
       const plantData = plantDatabase.find((entry) => {
         const common = normalizeText(entry.common_name);
         const scientific = normalizeText(entry.scientific_name);
         return (
-          (hasCommonMatch &&
-            common &&
-            (common === identifiedCommon ||
-              common.includes(identifiedCommon) ||
-              identifiedCommon.includes(common))) ||
-          (hasScientificMatch &&
-            scientific &&
-            (scientific === identifiedScientific ||
-              scientific.includes(identifiedScientific) ||
-              identifiedScientific.includes(scientific)))
+          (plantName && (common === plantName || common.includes(plantName) || plantName.includes(common))) ||
+          (scientificName &&
+            (scientific === scientificName || scientific.includes(scientificName) || scientificName.includes(scientific)))
         );
       });
 
-      const knownDiseases = plantData?.common_diseases?.join(", ") || "No mapped disease list";
-      const knownPests = plantData?.common_pests?.join(", ") || "No mapped pest list";
-
-      setAnalysisStep("Analyzing disease patterns");
-      const diseaseAnalysis = await appClient.integrations.Core.InvokeLLM({
-        prompt: `You are VerdentVision Crop Pathology Engine.
-Identified plant: ${plantIdentification.plant_name} (${plantIdentification.scientific_name})
-Known issues for this plant:
-- Diseases: ${knownDiseases}
-- Pests: ${knownPests}
-
-Rules:
-1) Use only symptoms visible in the image.
-2) If evidence is insufficient, set disease_type="uncertain", confidence below 60, and explain in analysis_notes.
-3) If no clear disease is visible, set is_healthy=true and disease_name="Healthy - No Disease Detected".`,
-        file_urls: [fileUrl],
-        response_json_schema: {
-          type: "object",
-          properties: {
-            disease_name: { type: "string" },
-            disease_type: {
-              type: "string",
-              enum: ["fungal", "bacterial", "viral", "pest", "nutrient", "physiological", "none", "uncertain"],
-            },
-            infection_level: { type: "number" },
-            severity: { type: "string", enum: ["low", "medium", "high", "critical"] },
-            symptoms: { type: "array", items: { type: "string" } },
-            pathogen_signs: { type: "array", items: { type: "string" } },
-            is_healthy: { type: "boolean" },
-            confidence: { type: "number" },
-            analysis_notes: { type: "string" },
-          },
-        },
-      });
-
-      setAnalysisStep("Running reliability verification");
-      const verification = await appClient.integrations.Core.InvokeLLM({
-        prompt: `You are VerdentVision Diagnosis Verifier.
-Plant: ${plantIdentification.plant_name}
-Disease hypothesis: ${diseaseAnalysis.disease_name}
-Symptoms: ${(diseaseAnalysis.symptoms || []).join(", ")}
-Infection level: ${diseaseAnalysis.infection_level}
-
-Return verified=true only when the diagnosis is strongly supported by the image.
-If uncertain, set should_abstain=true and provide corrections.`,
-        file_urls: [fileUrl],
-        response_json_schema: {
-          type: "object",
-          properties: {
-            verified: { type: "boolean" },
-            should_abstain: { type: "boolean" },
-            final_confidence: { type: "number" },
-            reliability_score: { type: "number" },
-            corrections: { type: "string" },
-          },
-        },
-      });
-
-      const diseaseConfidence = toNumber(diseaseAnalysis?.confidence, 0);
-      const verificationConfidence = toNumber(verification?.final_confidence, 0);
-      const finalConfidence = Math.max(
-        0,
-        Math.min(
-          100,
-          Math.round(plantConfidence * 0.4 + diseaseConfidence * 0.35 + verificationConfidence * 0.25)
-        )
-      );
-
-      const isHealthy = Boolean(diseaseAnalysis?.is_healthy);
-      const reliable =
-        Boolean(verification?.verified) &&
-        !Boolean(verification?.should_abstain) &&
-        finalConfidence >= MIN_RELIABLE_CONFIDENCE;
-      const diseaseName = isHealthy
-        ? "Healthy - No Disease Detected"
-        : diseaseAnalysis?.disease_name || "Uncertain disease pattern";
-
       const diagnosis = {
-        plant_name: plantIdentification?.plant_name || "Unknown plant",
-        disease_name: diseaseName,
-        infection_level: Math.max(0, Math.min(100, Math.round(toNumber(diseaseAnalysis?.infection_level, 0)))),
-        severity: toSeverity(diseaseAnalysis?.severity),
-        confidence_score: finalConfidence,
-        symptoms: diseaseAnalysis?.symptoms || [],
-        pathogen_signs: diseaseAnalysis?.pathogen_signs || [],
+        plant_name: result.plant_name || "Unknown plant",
+        scientific_name: result.scientific_name || "",
+        disease_name: isHealthy ? "Healthy - No Disease Detected" : result.disease_name || "Uncertain disease pattern",
+        disease_type: result.disease_type || "uncertain",
+        infection_level: isHealthy ? 0 : infectionLevel,
+        severity: isHealthy ? "low" : result.severity || deriveSeverity(infectionLevel),
+        confidence_score: confidenceScore,
+        symptoms: Array.isArray(result.symptoms) ? result.symptoms : [],
+        pathogen_signs: Array.isArray(result.pathogen_signs) ? result.pathogen_signs : [],
         is_healthy: isHealthy,
-        leaf_characteristics: plantIdentification?.leaf_description || "",
-        verified: reliable,
-        requires_manual_review: !reliable,
+        verified: !requiresManualReview,
+        requires_manual_review: requiresManualReview,
         image_url: fileUrl,
-        diagnosis_notes: diseaseAnalysis?.analysis_notes || verification?.corrections || "",
-        model_corrections: verification?.corrections || "",
-        plant_part: plantIdentification?.plant_part || "unknown",
+        diagnosis_notes: result.diagnosis_notes || "",
       };
 
       setAnalysisStep("Saving diagnosis");
@@ -385,62 +276,11 @@ If uncertain, set should_abstain=true and provide corrections.`,
         plant_name: diagnosis.plant_name,
         disease_name: diagnosis.disease_name,
         severity: diagnosis.severity,
-        confidence_score: finalConfidence,
-        image_url: fileUrl,
+        confidence_score: diagnosis.confidence_score,
+        image_url: diagnosis.image_url,
         symptoms: diagnosis.symptoms,
-        status: diagnosis.is_healthy ? "monitoring" : reliable ? "diagnosed" : "review_required",
+        status: diagnosis.is_healthy ? "monitoring" : diagnosis.requires_manual_review ? "review_required" : "diagnosed",
       });
-
-      if (reliable && finalConfidence >= 72 && !diagnosis.is_healthy && diagnosis.disease_name) {
-        const existingTreatments = await appClient.entities.Treatment.filter({
-          disease_name: diagnosis.disease_name,
-        });
-
-        if (existingTreatments.length === 0) {
-          try {
-            const treatmentResult = await appClient.integrations.Core.InvokeLLM({
-              prompt: `Generate treatment recommendations for ${diagnosis.disease_name} on ${diagnosis.plant_name}.
-
-Provide exactly 4 treatments: 2 organic + 2 chemical.
-For each treatment include name, type, application_method, description, safety_precautions[], effectiveness_rating(1-5).`,
-              response_json_schema: {
-                type: "object",
-                properties: {
-                  treatments: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        name: { type: "string" },
-                        type: { type: "string", enum: ["organic", "chemical"] },
-                        description: { type: "string" },
-                        application_method: { type: "string" },
-                        safety_precautions: { type: "array", items: { type: "string" } },
-                        effectiveness_rating: { type: "number" },
-                      },
-                    },
-                  },
-                },
-              },
-            });
-
-            for (const treatment of treatmentResult.treatments || []) {
-              await appClient.entities.Treatment.create({
-                disease_name: diagnosis.disease_name,
-                treatment_name: treatment.name,
-                treatment_type: treatment.type,
-                description: treatment.description,
-                application_method: treatment.application_method,
-                safety_precautions: treatment.safety_precautions,
-                effectiveness_rating: treatment.effectiveness_rating,
-                is_favorite: false,
-              });
-            }
-          } catch (treatmentError) {
-            console.error("Failed to auto-generate treatments:", treatmentError);
-          }
-        }
-      }
 
       const careAdvice = plantData
         ? {
@@ -455,14 +295,12 @@ For each treatment include name, type, application_method, description, safety_p
       setDiagnosisResult({ ...diagnosis, id: saved.id, careAdvice, plantData });
       queryClient.invalidateQueries(["recent-diagnoses"]);
 
-      if (!reliable) {
-        setError(
-          "Diagnosis confidence is low. Results are shown for review only. Upload a clearer plant image for a verified diagnosis."
-        );
+      if (diagnosis.requires_manual_review) {
+        setError("Diagnosis confidence is low. Results are shown for review only.");
       }
-    } catch (err) {
-      setError(err?.message || "Failed to analyze image. Please try again.");
-      console.error(err);
+    } catch (diagnosisError) {
+      setError(diagnosisError?.message || "Failed to diagnose image. Please try again.");
+      console.error(diagnosisError);
     } finally {
       setIsAnalyzing(false);
       setAnalysisStep("");
@@ -538,8 +376,7 @@ For each treatment include name, type, application_method, description, safety_p
                   </div>
                   <h3 className="mb-2 text-xl font-semibold text-gray-900">Capture or Upload Plant Image</h3>
                   <p className="mx-auto mb-6 max-w-xl text-gray-700">
-                    Use a clear image of an actual plant leaf, stem, fruit, or whole crop. Non-plant images are automatically
-                    rejected.
+                    Use a clear image of an actual plant leaf, stem, fruit, or whole crop. Non-plant images are rejected.
                   </p>
                   <div className="flex flex-col justify-center gap-4 sm:flex-row">
                     <Button onClick={startCamera} className="gap-2 bg-violet-600 hover:bg-violet-700" size="lg">
@@ -578,7 +415,7 @@ For each treatment include name, type, application_method, description, safety_p
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
-                      {analysisStep ? `${analysisStep}...` : "Analyzing image..."}
+                      {analysisStep ? `${analysisStep}...` : "Diagnosing image..."}
                     </>
                   ) : (
                     <>

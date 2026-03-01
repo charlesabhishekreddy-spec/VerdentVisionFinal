@@ -3,6 +3,7 @@ import path from "node:path";
 import { extname } from "node:path";
 import { JsonDatabase, ENTITY_NAMES } from "./database.js";
 import { buildLlmResponse } from "./llm.js";
+import { diagnosePlantImage } from "./diagnosis.js";
 import {
   ACCOUNT_STATUS_VALUES,
   ROLE_VALUES,
@@ -517,12 +518,17 @@ export async function createApp(config) {
     }
 
     if (touch) {
-      await db.transact((draft) => {
-        draft.auth_sessions = (draft.auth_sessions || []).map((entry) =>
-          entry.id === session.id ? { ...entry, last_active: nowIso(), updated_date: nowIso() } : entry
-        );
-        touchDeviceSession(draft, user.email, req, session.device_id);
-      });
+      try {
+        await db.transact((draft) => {
+          draft.auth_sessions = (draft.auth_sessions || []).map((entry) =>
+            entry.id === session.id ? { ...entry, last_active: nowIso(), updated_date: nowIso() } : entry
+          );
+          touchDeviceSession(draft, user.email, req, session.device_id);
+        });
+      } catch (touchError) {
+        // Do not fail authenticated reads because of a non-critical session-touch write error.
+        console.error("[auth] session touch failed:", touchError?.message || touchError);
+      }
     }
 
     return { user, session, token, tokenHash };
@@ -614,7 +620,10 @@ export async function createApp(config) {
     ) {
       bucket = config.rateLimits.auth;
       scope = "auth";
-    } else if (routePath.startsWith("/integrations/core/invoke-llm")) {
+    } else if (
+      routePath.startsWith("/integrations/core/invoke-llm") ||
+      routePath.startsWith("/ai/diagnose-plant")
+    ) {
       bucket = config.rateLimits.llm;
       scope = "llm";
     }
@@ -662,7 +671,9 @@ export async function createApp(config) {
       return users.filter((entry) => entry.account_status !== "suspended");
     }
 
-    const records = Array.isArray(snapshot.entities?.[entityName]) ? snapshot.entities[entityName] : [];
+    const records = (
+      Array.isArray(snapshot.entities?.[entityName]) ? snapshot.entities[entityName] : []
+    ).filter((record) => record && typeof record === "object");
     if (user.role === "admin") return records;
     if (OWNER_SCOPED_ENTITIES.has(entityName)) {
       return records.filter((record) => isOwnedByUser(record, user));
@@ -1363,6 +1374,34 @@ export async function createApp(config) {
         return;
       }
 
+      if (routePath === "/ai/diagnose-plant" && method === "POST") {
+        const context = await requireAuth(req, res);
+        if (!context) return;
+        if (!requireCsrf(req, res, context)) return;
+
+        const body = await readJsonBody(req, config.requestLimits.jsonBodyBytes);
+        const fileUrl = String(body.file_url || "").trim();
+        if (!fileUrl) {
+          throw createHttpError(400, "file_url is required.", "invalid_file_url");
+        }
+
+        const snapshot = db.read();
+        const plantDatabase = Array.isArray(snapshot?.entities?.PlantDatabase)
+          ? snapshot.entities.PlantDatabase
+          : [];
+
+        const diagnosis = await diagnosePlantImage({
+          fileUrl,
+          plantDatabase,
+          ai: config.ai,
+          uploadDir: config.uploadDir,
+          uploadsPublicPath: config.uploadsPublicPath,
+        });
+
+        success(res, 200, diagnosis);
+        return;
+      }
+
       if (routePath === "/integrations/core/invoke-llm" && method === "POST") {
         const context = await requireAuth(req, res);
         if (!context) return;
@@ -1533,8 +1572,18 @@ export async function createApp(config) {
       throw createHttpError(404, "Endpoint not found.", "not_found");
     } catch (error) {
       const status = Number(error?.status) || 500;
-      const message = status >= 500 ? "Internal server error." : error.message || "Request failed.";
+      const message =
+        status >= 500 && config.isProduction ? "Internal server error." : error.message || "Request failed.";
       const code = error?.code || (status >= 500 ? "internal_error" : "request_failed");
+      if (status >= 500) {
+        console.error("[api] request failed", {
+          method,
+          routePath,
+          status,
+          code,
+          message: error?.message || "",
+        });
+      }
       failure(res, status, message, code);
     }
   };
