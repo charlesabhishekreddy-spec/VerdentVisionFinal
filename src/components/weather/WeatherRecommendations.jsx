@@ -3,31 +3,34 @@ import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lightbulb, Droplets, Bug, Sprout, Calendar, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { getBrowserLocation } from "@/lib/browserLocation";
 
 export default function WeatherRecommendations({ className = "" }) {
   const [recommendations, setRecommendations] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    const fetchRecommendations = async () => {
-      try {
-        const user = await appClient.auth.me();
-        const profileLocation = String(user?.location || "").trim();
-        const crops = user?.primary_crops || [];
-        const farmingMethod = user?.farming_method || "conventional";
-        const browserLocation = await getBrowserLocation();
-        const locationLabel = browserLocation
-          ? `${browserLocation.latitude.toFixed(4)}, ${browserLocation.longitude.toFixed(4)}`
-          : profileLocation || "Des Moines, Iowa, United States";
-        const coordinateContext = browserLocation
-          ? `Use these exact coordinates:
+  const fetchRecommendations = async ({ forceRefreshLocation = false } = {}) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const user = await appClient.auth.me();
+      const profileLocation = String(user?.location || "").trim();
+      const crops = user?.primary_crops || [];
+      const farmingMethod = user?.farming_method || "conventional";
+      const browserLocation = await getBrowserLocation({ forceRefresh: forceRefreshLocation });
+      const locationLabel = browserLocation
+        ? `${browserLocation.latitude.toFixed(4)}, ${browserLocation.longitude.toFixed(4)}`
+        : profileLocation || "Des Moines, Iowa, United States";
+      const coordinateContext = browserLocation
+        ? `Use these exact coordinates:
 Latitude: ${browserLocation.latitude}
 Longitude: ${browserLocation.longitude}`
-          : `Use this location name: ${locationLabel}`;
+        : `Use this location name: ${locationLabel}`;
 
-        const result = await appClient.integrations.Core.InvokeLLM({
-          prompt: `Based on real-time weather conditions, provide AI-driven farming recommendations.
+      const result = await appClient.integrations.Core.InvokeLLM({
+        prompt: `Based on real-time weather conditions, provide AI-driven farming recommendations.
 
 USER CONTEXT:
 - Location: ${locationLabel}
@@ -44,68 +47,71 @@ Analyze current and upcoming weather to provide:
 6. Disease risk assessment based on humidity/temperature
 
 Be specific and actionable. Consider real-time weather patterns.`,
-          add_context_from_internet: true,
-          response_json_schema: {
-            type: "object",
-            properties: {
-              irrigation: {
+        add_context_from_internet: true,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            irrigation: {
+              type: "object",
+              properties: {
+                recommendation: { type: "string" },
+                timing: { type: "string" },
+                priority: { type: "string", enum: ["low", "medium", "high"] }
+              }
+            },
+            pest_control: {
+              type: "object",
+              properties: {
+                recommendation: { type: "string" },
+                optimal_window: { type: "string" },
+                priority: { type: "string", enum: ["low", "medium", "high"] }
+              },
+            },
+            planting_harvesting: {
+              type: "object",
+              properties: {
+                recommendation: { type: "string" },
+                timing: { type: "string" },
+                priority: { type: "string", enum: ["low", "medium", "high"] }
+              }
+            },
+            protective_measures: {
+              type: "array",
+              items: {
                 type: "object",
                 properties: {
-                  recommendation: { type: "string" },
-                  timing: { type: "string" },
-                  priority: { type: "string", enum: ["low", "medium", "high"] }
+                  measure: { type: "string" },
+                  urgency: { type: "string", enum: ["low", "medium", "high"] },
+                  reason: { type: "string" }
                 }
-              },
-              pest_control: {
-                type: "object",
-                properties: {
-                  recommendation: { type: "string" },
-                  optimal_window: { type: "string" },
-                  priority: { type: "string", enum: ["low", "medium", "high"] }
-                }
-              },
-              planting_harvesting: {
-                type: "object",
-                properties: {
-                  recommendation: { type: "string" },
-                  timing: { type: "string" },
-                  priority: { type: "string", enum: ["low", "medium", "high"] }
-                }
-              },
-              protective_measures: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    measure: { type: "string" },
-                    urgency: { type: "string", enum: ["low", "medium", "high"] },
-                    reason: { type: "string" }
-                  }
-                }
-              },
-              priority_tasks: {
-                type: "array",
-                items: { type: "string" }
-              },
-              disease_risk: {
-                type: "object",
-                properties: {
-                  level: { type: "string", enum: ["low", "moderate", "high"] },
-                  reasoning: { type: "string" }
-                }
+              }
+            },
+            priority_tasks: {
+              type: "array",
+              items: { type: "string" }
+            },
+            disease_risk: {
+              type: "object",
+              properties: {
+                level: { type: "string", enum: ["low", "moderate", "high"] },
+                reasoning: { type: "string" }
               }
             }
           }
-        });
+        }
+      });
 
-        setRecommendations(result);
-      } catch (error) {
-        console.error("Failed to fetch recommendations:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      setRecommendations(result);
+    } catch (fetchError) {
+      setRecommendations(null);
+      setError(fetchError?.message || "Failed to load weather recommendations.");
+      console.error("Failed to fetch recommendations:", fetchError);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchRecommendations();
   }, []);
 
@@ -129,7 +135,24 @@ Be specific and actionable. Consider real-time weather patterns.`,
     );
   }
 
-  if (!recommendations) return null;
+  if (!recommendations) {
+    return (
+      <Card className={`border-none shadow-lg rounded-3xl ${className}`.trim()}>
+        <CardHeader className="border-b bg-violet-50/70">
+          <CardTitle className="flex items-center gap-2">
+            <Lightbulb className="w-5 h-5 text-violet-600" />
+            AI Weather Recommendations
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3 p-6">
+          <p className="text-sm text-gray-700">{error || "No recommendations available yet."}</p>
+          <Button size="sm" onClick={() => fetchRecommendations({ forceRefreshLocation: true })}>
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className={`border-none shadow-lg rounded-3xl flex h-full flex-col overflow-hidden ${className}`.trim()}>
