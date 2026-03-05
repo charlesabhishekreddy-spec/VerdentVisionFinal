@@ -12,6 +12,7 @@ export default function TreatmentRecommendations({ diagnosis }) {
   const [isLoading, setIsLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [savedTreatments, setSavedTreatments] = useState([]);
+  const [loadError, setLoadError] = useState("");
 
   const shouldDisableTreatments =
     diagnosis?.is_healthy ||
@@ -24,11 +25,13 @@ export default function TreatmentRecommendations({ diagnosis }) {
   const fetchTreatments = async ({ forceRefresh = false } = {}) => {
     if (shouldDisableTreatments) {
       setTreatments([]);
+      setLoadError("");
       setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    setLoadError("");
     try {
       const scopedTreatments = await appClient.entities.Treatment.filter({
         disease_name: diagnosis.disease_name,
@@ -150,6 +153,7 @@ For each treatment provide:
     } catch (fetchError) {
       console.error("Failed to fetch treatments:", fetchError);
       setTreatments([]);
+      setLoadError(fetchError?.message || "Failed to generate treatment recommendations.");
     } finally {
       setIsLoading(false);
     }
@@ -238,6 +242,10 @@ For each treatment provide:
           </Button>
         </div>
 
+        {loadError ? (
+          <div className="border-b border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{loadError}</div>
+        ) : null}
+
         {isProvisional && (
           <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             <div className="flex items-start gap-2">
@@ -252,7 +260,12 @@ For each treatment provide:
 
         <div className="max-h-[42rem] divide-y overflow-y-auto">
           {treatments.length === 0 && (
-            <div className="p-6 text-sm text-gray-600">No treatments are available for this diagnosis yet.</div>
+            <div className="space-y-3 p-6 text-sm text-gray-600">
+              <p>No treatments are available for this diagnosis yet.</p>
+              <Button variant="outline" size="sm" onClick={() => fetchTreatments({ forceRefresh: true })}>
+                Retry treatment generation
+              </Button>
+            </div>
           )}
 
           {treatments.map((treatment, index) => {
