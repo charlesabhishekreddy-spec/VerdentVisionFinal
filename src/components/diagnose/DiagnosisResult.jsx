@@ -1,15 +1,20 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Leaf, Bug, AlertCircle, X, Droplets, Sprout, Users, ShieldAlert, ShieldCheck } from "lucide-react";
+import { Leaf, Bug, AlertCircle, X, Droplets, Sprout, Users, ShieldAlert, ShieldCheck, Cpu } from "lucide-react";
 import FeedbackForm from "./FeedbackForm.jsx";
 
 export default function DiagnosisResult({ diagnosis, onStartOver }) {
   const [showFeedback, setShowFeedback] = useState(false);
-  const infectionLevel = Math.max(
-    0,
-    Math.min(100, Number.parseInt(String(diagnosis.infection_level || diagnosis.confidence_score || 0), 10))
-  );
+  const parsePercent = (value, fallback = 0) => {
+    let parsed = Number.parseFloat(String(value ?? fallback));
+    if (!Number.isFinite(parsed)) parsed = fallback;
+    if (parsed >= 0 && parsed <= 1) parsed *= 100;
+    return Math.max(0, Math.min(100, Math.round(parsed)));
+  };
+
+  const infectionLevel = parsePercent(diagnosis.infection_level ?? diagnosis.confidence_score, 0);
+  const confidenceScore = parsePercent(diagnosis.confidence_score, 0);
   const isReliable = !diagnosis.requires_manual_review;
 
   const getInfectionColor = (level) => {
@@ -43,7 +48,7 @@ export default function DiagnosisResult({ diagnosis, onStartOver }) {
               {isReliable ? "Verified" : "Needs Review"}
             </div>
             <div className="inline-flex items-center rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-700">
-              Confidence {Number.parseInt(String(diagnosis.confidence_score || 0), 10)}%
+              Confidence {confidenceScore}%
             </div>
           </div>
 
@@ -65,6 +70,9 @@ export default function DiagnosisResult({ diagnosis, onStartOver }) {
               <span className="font-medium">Plant</span>
             </div>
             <p className="ml-7 text-xl font-bold text-gray-900">{diagnosis.plant_name || "Unknown plant"}</p>
+            {diagnosis.scientific_name ? (
+              <p className="ml-7 text-sm text-gray-600 italic">{diagnosis.scientific_name}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1">
@@ -103,6 +111,39 @@ export default function DiagnosisResult({ diagnosis, onStartOver }) {
             </div>
           )}
 
+          {diagnosis.probable_causes && diagnosis.probable_causes.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700">Probable Causes</h4>
+              <ul className="ml-7 space-y-1">
+                {diagnosis.probable_causes.map((cause, i) => (
+                  <li key={i} className="text-gray-700">
+                    - {cause}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {diagnosis.immediate_actions && diagnosis.immediate_actions.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700">Immediate Actions</h4>
+              <ul className="ml-7 space-y-1">
+                {diagnosis.immediate_actions.map((action, i) => (
+                  <li key={i} className="text-gray-700">
+                    - {action}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {diagnosis.diagnosis_notes ? (
+            <div className="space-y-2">
+              <h4 className="font-medium text-gray-700">Diagnosis Notes</h4>
+              <p className="ml-7 text-sm leading-relaxed text-gray-700">{diagnosis.diagnosis_notes}</p>
+            </div>
+          ) : null}
+
           {diagnosis.careAdvice && (
             <div className="space-y-4 border-t pt-4">
               <h3 className="text-lg font-bold text-gray-900">Personalized Care Guide</h3>
@@ -136,6 +177,19 @@ export default function DiagnosisResult({ diagnosis, onStartOver }) {
                   <p className="ml-6 text-sm text-gray-700">{diagnosis.careAdvice.companions.join(", ")}</p>
                 </div>
               )}
+            </div>
+          )}
+
+          {(diagnosis.model_name || diagnosis.model_provider || diagnosis.pipeline_version) && (
+            <div className="rounded-xl border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-900">
+              <div className="mb-1 flex items-center gap-2 font-semibold">
+                <Cpu className="h-4 w-4" />
+                Diagnosis Engine
+              </div>
+              <p>
+                {diagnosis.model_name || "model"}{diagnosis.model_provider ? ` (${diagnosis.model_provider})` : ""}
+                {diagnosis.pipeline_version ? ` • ${diagnosis.pipeline_version}` : ""}
+              </p>
             </div>
           )}
 

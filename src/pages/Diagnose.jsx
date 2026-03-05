@@ -9,14 +9,19 @@ import DiagnosisResult from "../components/diagnose/DiagnosisResult.jsx";
 import TreatmentRecommendations from "../components/diagnose/TreatmentRecommendations.jsx";
 
 const MAX_UPLOAD_MB = 8;
+const TARGET_UPLOAD_MB = 2.5;
+const MAX_IMAGE_DIMENSION = 2048;
 const MIN_RELIABLE_CONFIDENCE = 65;
+const RETRYABLE_ERROR_CODES = new Set(["ai_timeout", "ai_rate_limited", "upload_failed", "ai_call_failed"]);
 
 const toNumber = (value, fallback = 0) => {
   const parsed = Number.parseFloat(String(value ?? ""));
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const normalizeText = (value) => String(value || "").trim().toLowerCase();
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const revokeObjectUrl = (url) => {
   if (typeof url === "string" && url.startsWith("blob:")) {
@@ -24,11 +29,116 @@ const revokeObjectUrl = (url) => {
   }
 };
 
+const extractErrorCode = (error) => {
+  const text = String(error?.message || "");
+  const match = text.match(/\(([a-z_]+)\)\s*$/i);
+  return match ? match[1].toLowerCase() : "";
+};
+
+const isLikelyTransientError = (error) => {
+  const code = extractErrorCode(error);
+  if (RETRYABLE_ERROR_CODES.has(code)) return true;
+  const message = String(error?.message || "").toLowerCase();
+  return (
+    message.includes("unable to connect") ||
+    message.includes("timed out") ||
+    message.includes("timeout") ||
+    message.includes("rate limit")
+  );
+};
+
+const normalizePercent = (value, fallback = 0) => {
+  let parsed = toNumber(value, fallback);
+  if (parsed >= 0 && parsed <= 1) {
+    parsed *= 100;
+  }
+  return Math.round(clamp(parsed, 0, 100));
+};
+
+const loadImageForProcessing = (file) =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read image for optimization."));
+    };
+    img.src = objectUrl;
+  });
+
+const canvasToBlob = (canvas, type, quality) =>
+  new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Failed to process image canvas."));
+        return;
+      }
+      resolve(blob);
+    }, type, quality);
+  });
+
+const optimizeImageFile = async (file) => {
+  const imageType = String(file?.type || "").toLowerCase();
+  const canOptimize = ["image/jpeg", "image/png", "image/webp"].includes(imageType);
+  if (!canOptimize) return file;
+
+  const image = await loadImageForProcessing(file);
+  const scale = Math.min(1, MAX_IMAGE_DIMENSION / Math.max(image.width, image.height));
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return file;
+  ctx.drawImage(image, 0, 0, width, height);
+
+  const targetBytes = TARGET_UPLOAD_MB * 1024 * 1024;
+  const outputType = imageType === "image/png" ? "image/jpeg" : imageType;
+  let quality = 0.9;
+  let blob = await canvasToBlob(canvas, outputType, quality);
+  while (blob.size > targetBytes && quality > 0.55) {
+    quality -= 0.1;
+    blob = await canvasToBlob(canvas, outputType, quality);
+  }
+
+  const shouldKeepOriginal = blob.size >= file.size && scale >= 1;
+  if (shouldKeepOriginal) return file;
+
+  const nextExt = outputType.includes("png") ? "png" : outputType.includes("webp") ? "webp" : "jpg";
+  const baseName = String(file.name || "plant-image").replace(/\.[^/.]+$/, "");
+  return new File([blob], `${baseName}-optimized.${nextExt}`, {
+    type: outputType,
+    lastModified: Date.now(),
+  });
+};
+
 const deriveSeverity = (infectionLevel) => {
   if (infectionLevel <= 20) return "low";
   if (infectionLevel <= 50) return "medium";
   if (infectionLevel <= 80) return "high";
   return "critical";
+};
+
+const runWithRetry = async (operation, { maxAttempts = 2, onRetry } = {}) => {
+  let lastError = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await operation(attempt);
+    } catch (error) {
+      lastError = error;
+      const canRetry = attempt < maxAttempts && isLikelyTransientError(error);
+      if (!canRetry) throw error;
+      if (onRetry) onRetry(attempt, error);
+      await sleep(450 * attempt);
+    }
+  }
+  throw lastError || new Error("Operation failed.");
 };
 
 export default function Diagnose() {
@@ -110,6 +220,9 @@ export default function Diagnose() {
     revokeObjectUrl(previewUrl);
     setPreviewUrl(null);
     setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleFileSelect = (event) => {
@@ -218,33 +331,60 @@ export default function Diagnose() {
     setError(null);
 
     try {
+      setAnalysisStep("Optimizing image");
+      let fileForUpload = selectedFile;
+      try {
+        fileForUpload = await optimizeImageFile(selectedFile);
+      } catch (optimizeError) {
+        console.warn("Image optimization skipped:", optimizeError);
+      }
+
       setAnalysisStep("Uploading image");
-      const upload = await appClient.integrations.Core.UploadFile({ file: selectedFile });
+      const upload = await runWithRetry(
+        async () => appClient.integrations.Core.UploadFile({ file: fileForUpload }),
+        {
+          maxAttempts: 2,
+          onRetry: (attempt) => setAnalysisStep(`Retrying upload (${attempt + 1}/2)`),
+        }
+      );
       const fileUrl = String(upload?.file_url || "");
       if (!fileUrl || fileUrl.startsWith("blob:")) {
         throw new Error("Image upload failed. Please retry.");
       }
 
       setAnalysisStep("Running diagnosis engine");
-      const result = await appClient.ai.diagnosePlant(fileUrl);
+      const result = await runWithRetry(
+        async () => appClient.ai.diagnosePlant(fileUrl),
+        {
+          maxAttempts: 2,
+          onRetry: (attempt) => setAnalysisStep(`Retrying diagnosis (${attempt + 1}/2)`),
+        }
+      );
 
-      if (!result?.is_plant) {
+      const isPlant = result?.is_plant ?? result?.isPlant ?? true;
+      if (!isPlant) {
         setDiagnosisResult(null);
         setError(result?.rejection_reason || "This does not appear to be a plant image.");
         return;
       }
 
-      const infectionLevel = Math.max(0, Math.min(100, Math.round(toNumber(result.infection_level, 0))));
-      const confidenceScore = Math.max(0, Math.min(100, Math.round(toNumber(result.confidence_score, 0))));
+      const infectionLevel = normalizePercent(result.infection_level ?? result.infectionLevel, 0);
+      const confidenceScore = normalizePercent(result.confidence_score ?? result.confidence, 0);
       const isHealthy = Boolean(result.is_healthy);
       const requiresManualReview =
         Boolean(result.requires_manual_review) || confidenceScore < MIN_RELIABLE_CONFIDENCE;
 
+      let plantDatabase = [];
       setAnalysisStep("Loading plant care references");
-      const plantDatabase = await appClient.entities.PlantDatabase.list("", 300);
+      try {
+        plantDatabase = await appClient.entities.PlantDatabase.list("", 300);
+      } catch (plantDbError) {
+        console.warn("Plant database lookup failed:", plantDbError);
+      }
+
       const plantName = normalizeText(result.plant_name);
       const scientificName = normalizeText(result.scientific_name);
-      const plantData = plantDatabase.find((entry) => {
+      const plantData = (Array.isArray(plantDatabase) ? plantDatabase : []).find((entry) => {
         const common = normalizeText(entry.common_name);
         const scientific = normalizeText(entry.scientific_name);
         return (
@@ -269,14 +409,25 @@ export default function Diagnose() {
         requires_manual_review: requiresManualReview,
         image_url: fileUrl,
         diagnosis_notes: result.diagnosis_notes || "",
+        probable_causes: Array.isArray(result.probable_causes) ? result.probable_causes : [],
+        immediate_actions: Array.isArray(result.immediate_actions) ? result.immediate_actions : [],
+        model_provider: result.model_provider || "",
+        model_name: result.model_name || "",
+        pipeline_version: result.pipeline_version || "",
       };
 
       setAnalysisStep("Saving diagnosis");
       const saved = await appClient.entities.PlantDiagnosis.create({
         plant_name: diagnosis.plant_name,
         disease_name: diagnosis.disease_name,
+        disease_type: diagnosis.disease_type,
+        infection_level: diagnosis.infection_level,
         severity: diagnosis.severity,
         confidence_score: diagnosis.confidence_score,
+        requires_manual_review: diagnosis.requires_manual_review,
+        model_provider: diagnosis.model_provider,
+        model_name: diagnosis.model_name,
+        pipeline_version: diagnosis.pipeline_version,
         image_url: diagnosis.image_url,
         symptoms: diagnosis.symptoms,
         status: diagnosis.is_healthy ? "monitoring" : diagnosis.requires_manual_review ? "review_required" : "diagnosed",
@@ -293,13 +444,24 @@ export default function Diagnose() {
         : null;
 
       setDiagnosisResult({ ...diagnosis, id: saved.id, careAdvice, plantData });
-      queryClient.invalidateQueries(["recent-diagnoses"]);
+      queryClient.invalidateQueries({ queryKey: ["recent-diagnoses"] });
 
       if (diagnosis.requires_manual_review) {
         setError("Diagnosis confidence is low. Results are shown for review only.");
       }
     } catch (diagnosisError) {
-      setError(diagnosisError?.message || "Failed to diagnose image. Please try again.");
+      const code = extractErrorCode(diagnosisError);
+      if (code === "ai_not_configured") {
+        setError("Diagnosis AI provider is not configured on server. Set GEMINI_API_KEY or OPENAI_API_KEY.");
+      } else if (code === "ai_rate_limited") {
+        setError("Diagnosis request is rate limited. Please wait a moment and try again.");
+      } else if (code === "ai_timeout") {
+        setError("Diagnosis timed out. Please retry with a clear single-leaf or whole-plant image.");
+      } else if (code === "upload_failed") {
+        setError("Image upload failed. Please retry with a smaller image.");
+      } else {
+        setError(diagnosisError?.message || "Failed to diagnose image. Please try again.");
+      }
       console.error(diagnosisError);
     } finally {
       setIsAnalyzing(false);
