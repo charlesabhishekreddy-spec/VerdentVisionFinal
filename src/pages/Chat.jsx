@@ -276,7 +276,20 @@ export default function Chat() {
                     <img src={message.image} alt={message.imageName || "Uploaded crop"} className="mb-3 max-h-56 w-full rounded-lg object-cover" />
                   ) : null}
                   {message.role === "assistant" ? (
-                    <ReactMarkdown className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2">
+                    <ReactMarkdown
+                      skipHtml
+                      className="prose prose-sm max-w-none prose-p:my-2 prose-headings:my-2"
+                      components={{
+                        a: ({ node: _node, ...props }) => (
+                          <a
+                            {...props}
+                            target="_blank"
+                            rel="noopener noreferrer nofollow"
+                            className="text-violet-700 underline"
+                          />
+                        ),
+                      }}
+                    >
                       {message.content}
                     </ReactMarkdown>
                   ) : (
