@@ -77,6 +77,7 @@ const FORUM_CATEGORY_VALUES = new Set([
   "equipment",
   "general",
 ]);
+const JSON_BODY_METHODS = new Set(["POST", "PATCH", "PUT"]);
 
 const coerceLimit = (value, fallback = 200, max = 1000) => {
   const parsed = Number.parseInt(String(value ?? ""), 10);
@@ -241,6 +242,9 @@ const applyFilters = (items, filters) => {
 const applySecurityHeaders = (res, isSecureRequest) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-DNS-Prefetch-Control", "off");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
+  res.setHeader("Origin-Agent-Cluster", "?1");
   res.setHeader("Referrer-Policy", "no-referrer");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
@@ -363,11 +367,33 @@ export async function createApp(config) {
   }
 
   const rateWindowStore = new Map();
+  const getRequestIp = (req) => getClientIp(req, config.trustProxy);
+  const getRequestDeviceId = (req) => getDeviceId(req, config.trustProxy);
+
+  const pruneRateWindowStore = () => {
+    const now = Date.now();
+    for (const [key, value] of rateWindowStore.entries()) {
+      if (!value || !Number.isFinite(value.resetAt) || value.resetAt <= now) {
+        rateWindowStore.delete(key);
+      }
+    }
+    if (rateWindowStore.size > 50_000) {
+      const keys = rateWindowStore.keys();
+      while (rateWindowStore.size > 40_000) {
+        const key = keys.next().value;
+        if (!key) break;
+        rateWindowStore.delete(key);
+      }
+    }
+  };
+
+  setInterval(pruneRateWindowStore, 30_000).unref();
 
   const json = (res, status, payload) => {
     const content = JSON.stringify(payload);
     res.statusCode = status;
     res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Cache-Control", "no-store");
     res.setHeader("Content-Length", Buffer.byteLength(content));
     res.end(content);
   };
@@ -507,7 +533,7 @@ export async function createApp(config) {
     const csrfHash = hashText(csrfToken);
     const now = new Date();
     const expiresAt = new Date(now.getTime() + sessionDurationMs(remember)).toISOString();
-    const deviceId = getDeviceId(req);
+    const deviceId = getRequestDeviceId(req);
 
     await db.transact((draft) => {
       pruneExpiredSessions(draft);
@@ -519,7 +545,7 @@ export async function createApp(config) {
         user_email: normalizeEmail(user.email),
         remember: Boolean(remember),
         device_id: deviceId,
-        ip: getClientIp(req),
+        ip: getRequestIp(req),
         created_date: now.toISOString(),
         last_active: now.toISOString(),
         expires_at: expiresAt,
@@ -541,8 +567,8 @@ export async function createApp(config) {
 
   const checkLoginThrottle = async (email, req) => {
     const snapshot = db.read();
-    const deviceId = getDeviceId(req);
-    const ip = getClientIp(req);
+    const deviceId = getRequestDeviceId(req);
+    const ip = getRequestIp(req);
     const record = findThrottleRecord(snapshot, email, deviceId, ip);
     if (!record?.lock_until) return { allowed: true };
 
@@ -563,8 +589,8 @@ export async function createApp(config) {
   };
 
   const markFailedLogin = async (email, req) => {
-    const deviceId = getDeviceId(req);
-    const ip = getClientIp(req);
+    const deviceId = getRequestDeviceId(req);
+    const ip = getRequestIp(req);
     const lockoutWindowMs = config.auth.lockoutMinutes * 60 * 1000;
     const now = Date.now();
     const normalizedEmail = normalizeEmail(email);
@@ -607,8 +633,8 @@ export async function createApp(config) {
   };
 
   const clearFailedLogin = async (email, req) => {
-    const deviceId = getDeviceId(req);
-    const ip = getClientIp(req);
+    const deviceId = getRequestDeviceId(req);
+    const ip = getRequestIp(req);
     const normalizedEmail = normalizeEmail(email);
     await db.transact((draft) => {
       draft.login_throttle = (draft.login_throttle || []).filter(
@@ -709,7 +735,23 @@ export async function createApp(config) {
 
   const isSecureRequest = (req) => {
     if (req.socket?.encrypted) return true;
+    if (!config.trustProxy) return false;
     return String(req.headers["x-forwarded-proto"] || "").toLowerCase() === "https";
+  };
+
+  const hasRequestBody = (req) => {
+    const contentLength = Number.parseInt(String(req.headers["content-length"] || ""), 10);
+    if (Number.isFinite(contentLength) && contentLength > 0) return true;
+    const transferEncoding = String(req.headers["transfer-encoding"] || "").toLowerCase();
+    return transferEncoding.includes("chunked");
+  };
+
+  const requireJsonContentType = (req, res) => {
+    if (!hasRequestBody(req)) return true;
+    const contentType = String(req.headers["content-type"] || "").toLowerCase();
+    if (contentType.includes("application/json")) return true;
+    failure(res, 415, "Content-Type must be application/json.", "unsupported_media_type");
+    return false;
   };
 
   const takeRateLimit = (key, max, windowMs) => {
@@ -731,7 +773,7 @@ export async function createApp(config) {
   };
 
   const applyRateLimit = (req, res, routePath) => {
-    const ip = getClientIp(req);
+    const ip = getRequestIp(req);
     let bucket = config.rateLimits.general;
     let scope = "general";
 
@@ -858,6 +900,8 @@ export async function createApp(config) {
     const method = String(req.method || "GET").toUpperCase();
     const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
     const pathname = url.pathname;
+    const requestId = String(req.headers["x-request-id"] || "").trim().slice(0, 120) || makeId();
+    res.setHeader("X-Request-Id", requestId);
 
     const secure = isSecureRequest(req);
     applySecurityHeaders(res, secure);
@@ -874,8 +918,32 @@ export async function createApp(config) {
       return;
     }
 
+    if (JSON_BODY_METHODS.has(method) && !requireJsonContentType(req, res)) {
+      return;
+    }
+
     if (config.forceHttps && !secure) {
       failure(res, 426, "HTTPS is required for this API.", "https_required");
+      return;
+    }
+
+    if ((pathname === "/healthz" || pathname === "/readyz") && method === "GET") {
+      const snapshot = db.read();
+      const users = Array.isArray(snapshot?.users) ? snapshot.users.length : 0;
+      const aiConfigured = Boolean(String(config.ai.geminiApiKey || "").trim() || String(config.ai.openAiApiKey || "").trim());
+      success(res, 200, {
+        status: pathname === "/readyz" ? "ready" : "ok",
+        environment: config.nodeEnv,
+        checks: {
+          database: "ok",
+          upload_storage: "ok",
+          ai: aiConfigured ? "configured" : "degraded",
+        },
+        stats: {
+          users,
+        },
+        timestamp: nowIso(),
+      });
       return;
     }
 
@@ -892,13 +960,44 @@ export async function createApp(config) {
     }
 
     const routePath = pathname === prefix ? "/" : pathname.slice(prefix.length);
-    if (!applyRateLimit(req, res, routePath)) return;
+    const isHealthRoute =
+      routePath === "/health" || routePath === "/healthz" || routePath === "/ready" || routePath === "/readyz";
+    if (!isHealthRoute && !applyRateLimit(req, res, routePath)) return;
 
     try {
-      if (routePath === "/health" && method === "GET") {
+      if ((routePath === "/health" || routePath === "/healthz") && method === "GET") {
         success(res, 200, {
           status: "ok",
           environment: config.nodeEnv,
+          timestamp: nowIso(),
+        });
+        return;
+      }
+
+      if ((routePath === "/ready" || routePath === "/readyz") && method === "GET") {
+        const snapshot = db.read();
+        const users = Array.isArray(snapshot?.users) ? snapshot.users.length : 0;
+        const aiConfigured = Boolean(String(config.ai.geminiApiKey || "").trim() || String(config.ai.openAiApiKey || "").trim());
+        success(res, 200, {
+          status: "ready",
+          environment: config.nodeEnv,
+          checks: {
+            database: "ok",
+            upload_storage: "ok",
+            ai: aiConfigured ? "configured" : "degraded",
+          },
+          stats: {
+            users,
+          },
+          timestamp: nowIso(),
+        });
+        return;
+      }
+
+      if (routePath === "/" && method === "GET") {
+        success(res, 200, {
+          status: "ok",
+          service: "verdent-vision-api",
           timestamp: nowIso(),
         });
         return;
@@ -1803,6 +1902,7 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
       const code = error?.code || (status >= 500 ? "internal_error" : "request_failed");
       if (status >= 500) {
         console.error("[api] request failed", {
+          requestId,
           method,
           routePath,
           status,

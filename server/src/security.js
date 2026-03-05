@@ -127,18 +127,26 @@ export function serializeCookie(name, value, options = {}) {
   return parts.join("; ");
 }
 
-export function getClientIp(req) {
-  const forwarded = String(req.headers["x-forwarded-for"] || "");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
+export function getClientIp(req, trustProxy = false) {
+  if (trustProxy) {
+    const forwarded = String(req.headers["x-forwarded-for"] || "");
+    if (forwarded) {
+      const candidate = forwarded
+        .split(",")
+        .map((item) => item.trim())
+        .find(Boolean);
+      if (candidate) return candidate.slice(0, 120);
+    }
+    const realIp = String(req.headers["x-real-ip"] || "").trim();
+    if (realIp) return realIp.slice(0, 120);
   }
-  return req.socket?.remoteAddress || "0.0.0.0";
+  return String(req.socket?.remoteAddress || "0.0.0.0").slice(0, 120);
 }
 
-export function getDeviceId(req) {
+export function getDeviceId(req, trustProxy = false) {
   const raw = String(req.headers["x-device-id"] || "").trim();
   if (raw) return raw.slice(0, 120);
-  const ip = getClientIp(req);
+  const ip = getClientIp(req, trustProxy);
   const userAgent = String(req.headers["user-agent"] || "");
   return hashText(`${ip}:${userAgent}`).slice(0, 40);
 }
