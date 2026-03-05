@@ -65,6 +65,18 @@ const EXTENSION_BY_MIME = {
 };
 
 const ALLOWED_UPLOAD_MIME = new Set(Object.keys(EXTENSION_BY_MIME));
+const FORUM_CATEGORY_VALUES = new Set([
+  "pest_control",
+  "disease_management",
+  "organic_farming",
+  "irrigation",
+  "soil_health",
+  "crop_rotation",
+  "fertilizers",
+  "seeds",
+  "equipment",
+  "general",
+]);
 
 const coerceLimit = (value, fallback = 200, max = 1000) => {
   const parsed = Number.parseInt(String(value ?? ""), 10);
@@ -88,6 +100,106 @@ const parseJsonSafe = (value, fallback = null) => {
   } catch {
     return fallback;
   }
+};
+
+const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value || {}, key);
+
+const sanitizeTextValue = (value, maxLength = 3000) =>
+  String(value ?? "")
+    .replace(/\u0000/g, "")
+    .trim()
+    .slice(0, Math.max(0, maxLength));
+
+const parseNonNegativeInt = (value, fallback = 0, max = 1_000_000) => {
+  const parsed = Number.parseInt(String(value ?? ""), 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
+  return Math.min(parsed, max);
+};
+
+const normalizeForumCategory = (value) => {
+  const normalized = sanitizeTextValue(value, 40).toLowerCase().replace(/[^a-z0-9_]/g, "");
+  return FORUM_CATEGORY_VALUES.has(normalized) ? normalized : "general";
+};
+
+const normalizeForumTags = (value) => {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set();
+  const tags = [];
+  value.forEach((entry) => {
+    const tag = sanitizeTextValue(entry, 24).toLowerCase().replace(/[^a-z0-9_-]/g, "");
+    if (!tag || unique.has(tag)) return;
+    unique.add(tag);
+    tags.push(tag);
+  });
+  return tags.slice(0, 8);
+};
+
+const normalizeForumImages = (value) => {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((entry) => sanitizeTextValue(entry, 500))
+    .filter((url) => /^(\/uploads\/|https?:\/\/|data:image\/)/i.test(url))
+    .slice(0, 4);
+};
+
+const sanitizeEntityPayload = (entityName, payload, { isUpdate = false } = {}) => {
+  const raw = isObject(payload) ? payload : {};
+  if (entityName !== "ForumPost" && entityName !== "ForumComment") return raw;
+
+  const next = {};
+
+  if (entityName === "ForumPost") {
+    if (!isUpdate || hasOwn(raw, "title")) {
+      const title = sanitizeTextValue(raw.title, 180);
+      if (!title) throw createHttpError(400, "Post title is required.", "invalid_post_title");
+      next.title = title;
+    }
+    if (!isUpdate || hasOwn(raw, "content")) {
+      const content = sanitizeTextValue(raw.content, 8000);
+      if (!content) throw createHttpError(400, "Post content is required.", "invalid_post_content");
+      next.content = content;
+    }
+    if (!isUpdate || hasOwn(raw, "category")) {
+      next.category = normalizeForumCategory(raw.category);
+    }
+    if (!isUpdate || hasOwn(raw, "author_name")) {
+      next.author_name = sanitizeTextValue(raw.author_name, 80) || "Anonymous Farmer";
+    }
+    if (!isUpdate || hasOwn(raw, "tags")) {
+      next.tags = normalizeForumTags(raw.tags);
+    }
+    if (!isUpdate || hasOwn(raw, "images")) {
+      next.images = normalizeForumImages(raw.images);
+    }
+    if (!isUpdate || hasOwn(raw, "likes_count")) {
+      next.likes_count = parseNonNegativeInt(raw.likes_count, 0);
+    }
+    if (!isUpdate || hasOwn(raw, "comments_count")) {
+      next.comments_count = parseNonNegativeInt(raw.comments_count, 0);
+    }
+    if (!isUpdate || hasOwn(raw, "is_solved")) {
+      next.is_solved = Boolean(raw.is_solved);
+    }
+    if (!isUpdate || hasOwn(raw, "solved_date")) {
+      next.solved_date = raw.solved_date ? sanitizeTextValue(raw.solved_date, 40) : null;
+    }
+    return next;
+  }
+
+  if (!isUpdate || hasOwn(raw, "post_id")) {
+    const postId = sanitizeTextValue(raw.post_id, 120);
+    if (!postId) throw createHttpError(400, "post_id is required.", "invalid_post_id");
+    next.post_id = postId;
+  }
+  if (!isUpdate || hasOwn(raw, "content")) {
+    const content = sanitizeTextValue(raw.content, 2000);
+    if (!content) throw createHttpError(400, "Comment content is required.", "invalid_comment_content");
+    next.content = content;
+  }
+  if (!isUpdate || hasOwn(raw, "author_name")) {
+    next.author_name = sanitizeTextValue(raw.author_name, 80) || "Community Member";
+  }
+  return next;
 };
 
 const sortItems = (items, sortBy = "") => {
@@ -1569,7 +1681,7 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
 
           if (method === "PATCH") {
             const body = await readJsonBody(req, config.requestLimits.jsonBodyBytes);
-            const updates = isObject(body) ? body : {};
+            const updates = sanitizeEntityPayload(entityName, body, { isUpdate: true });
 
             const updated = await db.transact((draft) => {
               if (entityName === "User") {
@@ -1581,6 +1693,11 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
               if (!existing) throw createHttpError(404, "Record not found.", "record_not_found");
               if (!canMutateEntityRecord(entityName, existing, context.user)) {
                 throw createHttpError(403, "Access denied.", "forbidden");
+              }
+              if (entityName === "ForumComment" && hasOwn(updates, "post_id")) {
+                if (String(existing.post_id || "") !== String(updates.post_id || "")) {
+                  throw createHttpError(400, "Comment post_id cannot be changed.", "invalid_update");
+                }
               }
 
               const next = {
