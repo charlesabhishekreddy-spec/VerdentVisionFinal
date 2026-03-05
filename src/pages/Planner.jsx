@@ -38,6 +38,106 @@ const SOIL_TYPES = [
   "Unknown / Mixed",
 ];
 
+const CROP_SUGGESTIONS = [
+  "Tomato",
+  "Pepper",
+  "Chili",
+  "Eggplant",
+  "Cucumber",
+  "Pumpkin",
+  "Squash",
+  "Okra",
+  "Bitter Gourd",
+  "Bottle Gourd",
+  "Ridge Gourd",
+  "Sponge Gourd",
+  "Ash Gourd",
+  "Snake Gourd",
+  "Cluster Bean",
+  "French Bean",
+  "Cowpea",
+  "Watermelon",
+  "Muskmelon",
+  "Lettuce",
+  "Spinach",
+  "Cabbage",
+  "Cauliflower",
+  "Broccoli",
+  "Kale",
+  "Amaranth",
+  "Mustard Greens",
+  "Fenugreek",
+  "Coriander Leaf",
+  "Potato",
+  "Sweet Potato",
+  "Carrot",
+  "Radish",
+  "Beetroot",
+  "Turnip",
+  "Onion",
+  "Garlic",
+  "Cassava",
+  "Yam",
+  "Taro",
+  "Rice",
+  "Wheat",
+  "Maize",
+  "Barley",
+  "Oats",
+  "Sorghum",
+  "Millet",
+  "Rye",
+  "Finger Millet",
+  "Foxtail Millet",
+  "Proso Millet",
+  "Triticale",
+  "Quinoa",
+  "Buckwheat",
+  "Soybean",
+  "Chickpea",
+  "Lentil",
+  "Pea",
+  "Bean",
+  "Pigeon Pea",
+  "Black Gram",
+  "Green Gram",
+  "Horse Gram",
+  "Faba Bean",
+  "Alfalfa",
+  "Clover",
+  "Groundnut",
+  "Sesame",
+  "Sunflower",
+  "Mustard",
+  "Safflower",
+  "Linseed",
+  "Castor",
+  "Cotton",
+  "Sugarcane",
+  "Tobacco",
+  "Jute",
+  "Tea",
+  "Coffee",
+  "Cocoa",
+  "Black Pepper",
+  "Cardamom",
+  "Turmeric",
+  "Ginger",
+  "Cumin",
+  "Banana",
+  "Grape",
+  "Apple",
+  "Mango",
+  "Citrus",
+  "Strawberry",
+  "Papaya",
+  "Pomegranate",
+  "Guava",
+  "Pineapple",
+  "Coconut",
+  "Napier Grass",
+];
+
 const PLAN_STATUS = ["active", "planning", "completed", "abandoned"];
 
 const STATUS_BADGE_CLASS = {
@@ -238,7 +338,9 @@ Requirements:
 - Include realistic growth stages by week.
 - Include weekly activities and one concise tip.
 - Include watering, fertilizer, and soil guidance.
-- Include expected harvest date.`,
+- Include expected harvest date.
+- Support broad crop knowledge across vegetables, cereals, pulses, oilseeds, fruit crops, and cash crops.
+- If crop is uncommon, still provide agronomically reasonable timeline assumptions and mention them clearly.`,
         response_json_schema: {
           type: "object",
           properties: {
@@ -359,8 +461,15 @@ Requirements:
                 id="crop"
                 value={cropName}
                 onChange={(event) => setCropName(event.target.value)}
+                list="planner-crop-suggestions"
+                placeholder="Enter any crop (e.g., Tomato, Rice, Mango, Cotton, Sugarcane)"
                 className={FIELD_CONTROL_CLASS}
               />
+              <datalist id="planner-crop-suggestions">
+                {CROP_SUGGESTIONS.map((crop) => (
+                  <option key={crop} value={crop} />
+                ))}
+              </datalist>
             </div>
             <div className={`md:col-span-2 ${FIELD_WRAPPER_CLASS}`}>
               <Label htmlFor="date" className={FIELD_LABEL_CLASS}>

@@ -344,24 +344,475 @@ const shape = (s, v, key = "") => {
   return String(v ?? generic(s, key));
 };
 
-const timeline = (p) => {
-  const crop = p.match(/timeline for\s+(.+?)\s+starting from/i)?.[1]?.trim() || "Crop";
-  const d = p.match(/starting from\s+(\d{4}-\d{2}-\d{2})/i)?.[1] || iso(Date.now());
-  const start = new Date(`${d}T00:00:00`);
-  const total = crop.toLowerCase().includes("tomato") ? 16 : crop.toLowerCase().includes("corn") ? 14 : 12;
+const STAGE_ACTIVITY_LIBRARY = {
+  establishment: [
+    "Check stand establishment and fill gaps in poor germination spots.",
+    "Maintain uniform seed-zone moisture without waterlogging.",
+    "Watch for damping-off or early insect feeding and act quickly.",
+  ],
+  vegetative: [
+    "Maintain irrigation uniformity and avoid moisture stress swings.",
+    "Top-dress nutrients according to growth response and soil status.",
+    "Scout canopy and undersides of leaves for pests and lesions.",
+  ],
+  reproductive: [
+    "Protect flowering structures and support pollination conditions.",
+    "Avoid severe nutrient or irrigation stress during bloom/fruit set.",
+    "Monitor disease pressure closely in humid weather windows.",
+  ],
+  maturation: [
+    "Adjust irrigation to avoid cracking, lodging, or quality losses.",
+    "Prioritize crop protection only where threshold levels are reached.",
+    "Track maturity indicators and prepare harvest logistics.",
+  ],
+  harvest: [
+    "Harvest at target maturity and remove damaged produce promptly.",
+    "Sort, cool, and store produce using crop-specific handling standards.",
+    "Sanitize residues and plan rotation or next cycle soil preparation.",
+  ],
+};
+
+const STAGE_TIP_LIBRARY = {
+  establishment: "Early establishment determines final yield potential; correct stand issues immediately.",
+  vegetative: "Balanced nutrition and consistent moisture build strong canopy and root development.",
+  reproductive: "Stress management during flowering and set has the highest impact on productivity.",
+  maturation: "Fine-tune water and canopy management to protect quality and marketable yield.",
+  harvest: "Harvest timing and post-harvest handling are critical for value retention.",
+};
+
+const createTemplate = ({
+  totalWeeks,
+  watering,
+  fertilizer,
+  soil,
+  stagePlan,
+  stageNotes = {},
+}) => ({
+  totalWeeks,
+  watering,
+  fertilizer,
+  soil,
+  stagePlan,
+  stageNotes,
+});
+
+const TEMPLATE_FRUITING_VEGETABLE = createTemplate({
+  totalWeeks: 14,
+  watering: "Maintain even moisture; irrigate early morning and increase frequency during flowering and fruit fill.",
+  fertilizer: "Apply basal compost, then split nitrogen and potassium through vegetative and fruiting stages.",
+  soil: "Well-drained loam with pH 6.0-7.0 and good organic matter.",
+  stagePlan: [
+    { endWeek: 2, label: "Establishment", group: "establishment" },
+    { endWeek: 6, label: "Vegetative growth", group: "vegetative" },
+    { endWeek: 10, label: "Flowering and set", group: "reproductive" },
+    { endWeek: 13, label: "Fruit development", group: "maturation" },
+    { endWeek: 14, label: "Harvest window", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_LEAFY = createTemplate({
+  totalWeeks: 8,
+  watering: "Use frequent light irrigation to keep topsoil moist and reduce leaf stress.",
+  fertilizer: "Use nitrogen-forward feeding in small splits; avoid over-fertilization late.",
+  soil: "Fertile, friable soil with high organic matter and pH 6.0-7.0.",
+  stagePlan: [
+    { endWeek: 1, label: "Establishment", group: "establishment" },
+    { endWeek: 4, label: "Leaf canopy development", group: "vegetative" },
+    { endWeek: 6, label: "Market sizing", group: "maturation" },
+    { endWeek: 8, label: "Harvest cycles", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_ROOT_TUBER = createTemplate({
+  totalWeeks: 14,
+  watering: "Maintain uniform moisture and avoid prolonged saturation; reduce before harvest.",
+  fertilizer: "Apply balanced basal nutrients and emphasize potassium during root bulking.",
+  soil: "Loose, well-drained sandy-loam to loam to support root expansion.",
+  stagePlan: [
+    { endWeek: 2, label: "Establishment", group: "establishment" },
+    { endWeek: 6, label: "Vegetative growth", group: "vegetative" },
+    { endWeek: 11, label: "Bulking and sizing", group: "maturation" },
+    { endWeek: 14, label: "Harvest and curing", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_CEREAL = createTemplate({
+  totalWeeks: 16,
+  watering: "Prioritize irrigation at establishment, tillering, and reproductive milestones.",
+  fertilizer: "Apply basal nutrients, then split nitrogen at tillering and pre-reproductive stages.",
+  soil: "Well-drained medium-texture soils with balanced fertility and pH 6.0-7.5.",
+  stagePlan: [
+    { endWeek: 2, label: "Establishment", group: "establishment" },
+    { endWeek: 7, label: "Tillering and canopy expansion", group: "vegetative" },
+    { endWeek: 11, label: "Booting and flowering", group: "reproductive" },
+    { endWeek: 15, label: "Grain filling", group: "maturation" },
+    { endWeek: 16, label: "Harvest readiness", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_PULSE = createTemplate({
+  totalWeeks: 13,
+  watering: "Keep moisture moderate; avoid excess irrigation during pod maturity.",
+  fertilizer: "Use starter phosphorus and potassium; avoid excess nitrogen where nodulation is active.",
+  soil: "Well-drained soils with pH 6.0-7.5 and low compaction.",
+  stagePlan: [
+    { endWeek: 2, label: "Establishment", group: "establishment" },
+    { endWeek: 6, label: "Vegetative and branching", group: "vegetative" },
+    { endWeek: 9, label: "Flowering and pod set", group: "reproductive" },
+    { endWeek: 12, label: "Pod filling", group: "maturation" },
+    { endWeek: 13, label: "Dry-down and harvest", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_OILSEED = createTemplate({
+  totalWeeks: 14,
+  watering: "Maintain moderate moisture through flowering; avoid stress at seed filling.",
+  fertilizer: "Apply sulfur and balanced NPK as per soil test with split nitrogen strategy.",
+  soil: "Well-drained loam to clay-loam with pH 6.0-7.5.",
+  stagePlan: [
+    { endWeek: 2, label: "Establishment", group: "establishment" },
+    { endWeek: 6, label: "Vegetative growth", group: "vegetative" },
+    { endWeek: 9, label: "Flowering", group: "reproductive" },
+    { endWeek: 13, label: "Seed filling", group: "maturation" },
+    { endWeek: 14, label: "Harvest", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_FRUIT_TREE = createTemplate({
+  totalWeeks: 26,
+  watering: "Use deep irrigation cycles based on canopy demand and local evapotranspiration.",
+  fertilizer: "Use split nutrition aligned to flush, flowering, and fruit development phases.",
+  soil: "Deep, well-drained soil with strong organic matter management and mulch cover.",
+  stagePlan: [
+    { endWeek: 4, label: "Bud break and new flush", group: "establishment" },
+    { endWeek: 10, label: "Canopy development", group: "vegetative" },
+    { endWeek: 16, label: "Flowering and fruit set", group: "reproductive" },
+    { endWeek: 24, label: "Fruit growth and quality build", group: "maturation" },
+    { endWeek: 26, label: "Harvest and orchard sanitation", group: "harvest" },
+  ],
+});
+
+const TEMPLATE_CASH_CROP = createTemplate({
+  totalWeeks: 20,
+  watering: "Maintain moisture at key growth stages and avoid prolonged stress periods.",
+  fertilizer: "Use staged nutrient application with focus on nitrogen timing and micronutrient corrections.",
+  soil: "Deep, well-drained soils with strong structure and balanced fertility.",
+  stagePlan: [
+    { endWeek: 3, label: "Establishment", group: "establishment" },
+    { endWeek: 9, label: "Vegetative framework", group: "vegetative" },
+    { endWeek: 14, label: "Flowering and reproductive set", group: "reproductive" },
+    { endWeek: 18, label: "Boll/cane/product development", group: "maturation" },
+    { endWeek: 20, label: "Harvest operations", group: "harvest" },
+  ],
+});
+
+const withOverrides = (template, overrides = {}) => ({
+  ...template,
+  ...overrides,
+  stagePlan: Array.isArray(overrides.stagePlan)
+    ? overrides.stagePlan
+    : Array.isArray(template.stagePlan)
+      ? template.stagePlan
+      : [],
+  stageNotes: {
+    ...(template.stageNotes || {}),
+    ...(overrides.stageNotes || {}),
+  },
+});
+
+const CROP_LIBRARY = [
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Tomato", aliases: ["tomato", "tomatoes"], totalWeeks: 16 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Pepper", aliases: ["pepper", "bell pepper", "capsicum"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Chili", aliases: ["chili", "chilli", "hot pepper"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Eggplant", aliases: ["eggplant", "brinjal", "aubergine"], totalWeeks: 16 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Cucumber", aliases: ["cucumber"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Pumpkin", aliases: ["pumpkin"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Squash", aliases: ["squash", "zucchini"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Okra", aliases: ["okra"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Watermelon", aliases: ["watermelon"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Muskmelon", aliases: ["muskmelon", "melon", "cantaloupe"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Bitter Gourd", aliases: ["bitter gourd", "bitter melon", "karela"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Bottle Gourd", aliases: ["bottle gourd", "calabash", "lauki"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Ridge Gourd", aliases: ["ridge gourd", "luffa", "turai"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Sponge Gourd", aliases: ["sponge gourd", "luffa cylindrica"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Ash Gourd", aliases: ["ash gourd", "winter melon"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Snake Gourd", aliases: ["snake gourd"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Pea Pod", aliases: ["snow pea", "snap pea"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Cluster Bean", aliases: ["cluster bean", "guar"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "French Bean", aliases: ["french bean", "green bean", "string bean"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_FRUITING_VEGETABLE, { name: "Cowpea", aliases: ["cowpea", "yardlong bean"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Lettuce", aliases: ["lettuce"], totalWeeks: 8 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Spinach", aliases: ["spinach"], totalWeeks: 7 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Cabbage", aliases: ["cabbage"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Cauliflower", aliases: ["cauliflower"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Broccoli", aliases: ["broccoli"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Kale", aliases: ["kale"], totalWeeks: 10 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Amaranth", aliases: ["amaranth", "amaranthus"], totalWeeks: 8 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Mustard Greens", aliases: ["mustard greens", "sarson saag"], totalWeeks: 8 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Fenugreek", aliases: ["fenugreek", "methi"], totalWeeks: 7 }),
+  withOverrides(TEMPLATE_LEAFY, { name: "Coriander Leaf", aliases: ["coriander leaf", "cilantro"], totalWeeks: 7 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Potato", aliases: ["potato", "potatoes"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Sweet Potato", aliases: ["sweet potato", "sweet potatoes"], totalWeeks: 18 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Carrot", aliases: ["carrot", "carrots"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Onion", aliases: ["onion", "onions"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Garlic", aliases: ["garlic"], totalWeeks: 18 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Radish", aliases: ["radish"], totalWeeks: 8 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Beetroot", aliases: ["beetroot", "beet"], totalWeeks: 10 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Turnip", aliases: ["turnip"], totalWeeks: 10 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Cassava", aliases: ["cassava", "manioc", "tapioca"], totalWeeks: 28 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Yam", aliases: ["yam", "yams"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_ROOT_TUBER, { name: "Taro", aliases: ["taro", "colocasia"], totalWeeks: 22 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Rice", aliases: ["rice", "paddy"], totalWeeks: 17 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Wheat", aliases: ["wheat"], totalWeeks: 18 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Maize", aliases: ["maize", "corn"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Barley", aliases: ["barley"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Oats", aliases: ["oat", "oats"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Sorghum", aliases: ["sorghum", "jowar"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Millet", aliases: ["millet", "bajra", "pearl millet"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Rye", aliases: ["rye"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Finger Millet", aliases: ["finger millet", "ragi"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Foxtail Millet", aliases: ["foxtail millet"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Proso Millet", aliases: ["proso millet"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Triticale", aliases: ["triticale"], totalWeeks: 16 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Quinoa", aliases: ["quinoa"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Buckwheat", aliases: ["buckwheat"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Soybean", aliases: ["soybean", "soybeans", "soy"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Chickpea", aliases: ["chickpea", "gram", "chana"], totalWeeks: 16 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Lentil", aliases: ["lentil", "lentils"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Pea", aliases: ["pea", "peas", "green pea"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Bean", aliases: ["bean", "beans", "common bean"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Pigeon Pea", aliases: ["pigeon pea", "toor", "arhar"], totalWeeks: 22 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Black Gram", aliases: ["black gram", "urad"], totalWeeks: 12 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Green Gram", aliases: ["green gram", "mung", "moong"], totalWeeks: 11 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Horse Gram", aliases: ["horse gram"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Faba Bean", aliases: ["faba bean", "broad bean"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Groundnut", aliases: ["groundnut", "peanut", "peanuts"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Sesame", aliases: ["sesame", "til"], totalWeeks: 13 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Sunflower", aliases: ["sunflower", "sunflowers"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Mustard", aliases: ["mustard", "canola", "rapeseed"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Safflower", aliases: ["safflower"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Linseed", aliases: ["linseed", "flax", "flaxseed"], totalWeeks: 15 }),
+  withOverrides(TEMPLATE_OILSEED, { name: "Castor", aliases: ["castor", "castor bean"], totalWeeks: 18 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Cotton", aliases: ["cotton"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Sugarcane", aliases: ["sugarcane"], totalWeeks: 32 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Tobacco", aliases: ["tobacco"], totalWeeks: 20 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Jute", aliases: ["jute"], totalWeeks: 18 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Tea", aliases: ["tea"], totalWeeks: 26 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Coffee", aliases: ["coffee"], totalWeeks: 28 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Cocoa", aliases: ["cocoa", "cacao"], totalWeeks: 30 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Black Pepper", aliases: ["black pepper", "pepper vine"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Cardamom", aliases: ["cardamom"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Turmeric", aliases: ["turmeric"], totalWeeks: 26 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Ginger", aliases: ["ginger"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_CASH_CROP, { name: "Cumin", aliases: ["cumin", "jeera"], totalWeeks: 14 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Banana", aliases: ["banana", "bananas"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Grape", aliases: ["grape", "grapes"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Apple", aliases: ["apple", "apples"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Mango", aliases: ["mango", "mangoes"], totalWeeks: 28 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Citrus", aliases: ["citrus", "orange", "lemon", "lime"], totalWeeks: 26 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Strawberry", aliases: ["strawberry", "strawberries"], totalWeeks: 16 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Papaya", aliases: ["papaya"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Pomegranate", aliases: ["pomegranate"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Guava", aliases: ["guava"], totalWeeks: 24 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Pineapple", aliases: ["pineapple"], totalWeeks: 30 }),
+  withOverrides(TEMPLATE_FRUIT_TREE, { name: "Coconut", aliases: ["coconut"], totalWeeks: 30 }),
+  withOverrides(TEMPLATE_CEREAL, { name: "Napier Grass", aliases: ["napier grass", "elephant grass"], totalWeeks: 10 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Alfalfa", aliases: ["alfalfa", "lucerne"], totalWeeks: 10 }),
+  withOverrides(TEMPLATE_PULSE, { name: "Clover", aliases: ["clover"], totalWeeks: 10 }),
+];
+
+const normalizeCropToken = (value) =>
+  String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const CROP_ALIAS_TO_PROFILE = (() => {
+  const map = new Map();
+  CROP_LIBRARY.forEach((profile) => {
+    const aliases = [profile.name, ...(Array.isArray(profile.aliases) ? profile.aliases : [])];
+    aliases.forEach((alias) => {
+      const key = normalizeCropToken(alias);
+      if (key) map.set(key, profile);
+    });
+  });
+  return map;
+})();
+
+const CROP_FAMILY_INFERENCE_RULES = [
+  { pattern: /\b(rice|paddy|wheat|maize|corn|barley|oat|sorghum|millet|rye|triticale|quinoa|buckwheat)\b/i, template: TEMPLATE_CEREAL, totalWeeks: 16 },
+  { pattern: /\b(soy|chickpea|gram|pea|lentil|bean|pulse|pigeon pea|black gram|green gram|alfalfa|lucerne|clover)\b/i, template: TEMPLATE_PULSE, totalWeeks: 14 },
+  { pattern: /\b(groundnut|peanut|sesame|sunflower|mustard|canola|rapeseed|linseed|flax|castor|oilseed)\b/i, template: TEMPLATE_OILSEED, totalWeeks: 15 },
+  { pattern: /\b(cotton|sugarcane|tobacco|jute|tea|coffee|cocoa|turmeric|ginger|cardamom|black pepper|cumin)\b/i, template: TEMPLATE_CASH_CROP, totalWeeks: 22 },
+  { pattern: /\b(apple|mango|banana|citrus|orange|lemon|lime|grape|papaya|pomegranate|guava|pineapple|coconut|fruit)\b/i, template: TEMPLATE_FRUIT_TREE, totalWeeks: 24 },
+  { pattern: /\b(potato|sweet potato|cassava|yam|taro|onion|garlic|carrot|radish|beet|beetroot|turnip|root)\b/i, template: TEMPLATE_ROOT_TUBER, totalWeeks: 14 },
+  { pattern: /\b(lettuce|spinach|cabbage|cauliflower|broccoli|kale|amaranth|fenugreek|leafy|greens)\b/i, template: TEMPLATE_LEAFY, totalWeeks: 9 },
+  { pattern: /\b(tomato|pepper|chili|eggplant|cucumber|pumpkin|squash|okra|melon|gourd|zucchini|vegetable)\b/i, template: TEMPLATE_FRUITING_VEGETABLE, totalWeeks: 14 },
+];
+
+const toTitleCase = (value = "") =>
+  String(value || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part.slice(0, 1).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+
+const parseCropFromPrompt = (prompt = "") => {
+  const candidates = [
+    prompt.match(/(?:^|\n)\s*Crop\s*:\s*([^\n]+)/i)?.[1],
+    prompt.match(/timeline for\s+(.+?)\s+starting from/i)?.[1],
+    prompt.match(/plan for\s+(.+?)(?:\n|$)/i)?.[1],
+  ]
+    .filter(Boolean)
+    .map((item) =>
+      String(item || "")
+        .split(/(?:planting date|starting from|location|soil type|area size)/i)[0]
+        .replace(/[.,;:]+$/, "")
+        .trim()
+    )
+    .filter(Boolean);
+  return candidates[0] || "Crop";
+};
+
+const parsePlantingDateFromPrompt = (prompt = "") =>
+  prompt.match(/(?:planting date|starting from)\s*:?\s*(\d{4}-\d{2}-\d{2})/i)?.[1] || iso(Date.now());
+
+const resolveCropProfile = (cropName = "") => {
+  const normalized = normalizeCropToken(cropName);
+  if (CROP_ALIAS_TO_PROFILE.has(normalized)) {
+    return { ...CROP_ALIAS_TO_PROFILE.get(normalized) };
+  }
+
+  for (const [alias, profile] of CROP_ALIAS_TO_PROFILE.entries()) {
+    if (normalized && (normalized.includes(alias) || alias.includes(normalized))) {
+      return { ...profile };
+    }
+  }
+
+  for (const rule of CROP_FAMILY_INFERENCE_RULES) {
+    if (rule.pattern.test(normalized)) {
+      return withOverrides(rule.template, {
+        name: toTitleCase(cropName) || "Crop",
+        aliases: [normalized].filter(Boolean),
+        totalWeeks: Number(rule.totalWeeks || rule.template.totalWeeks || 14),
+      });
+    }
+  }
+
+  const unknownName = toTitleCase(cropName) || "Mixed Crop";
+  return withOverrides(TEMPLATE_FRUITING_VEGETABLE, {
+    name: unknownName,
+    aliases: [normalized].filter(Boolean),
+    totalWeeks: 14,
+  });
+};
+
+const getStageForWeek = (profile, week) => {
+  const stages = Array.isArray(profile.stagePlan) ? profile.stagePlan : [];
+  for (const stage of stages) {
+    if (week <= Number(stage.endWeek || 0)) return stage;
+  }
+  return stages[stages.length - 1] || { label: "Field operations", group: "vegetative" };
+};
+
+const uniqueStrings = (items = []) => {
+  const out = [];
+  const seen = new Set();
+  items.forEach((item) => {
+    const key = String(item || "").trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  });
+  return out;
+};
+
+const buildWeekActivities = (profile, stageGroup, week) => {
+  const baseActivities = STAGE_ACTIVITY_LIBRARY[stageGroup] || STAGE_ACTIVITY_LIBRARY.vegetative;
+  const indexed = [
+    baseActivities[(week - 1) % baseActivities.length],
+    baseActivities[(week + 1) % baseActivities.length],
+    "Record field observations and adjust actions based on thresholds.",
+  ];
+  const note = profile.stageNotes?.[stageGroup];
+  if (note) indexed.push(String(note));
+  return uniqueStrings(indexed).slice(0, 4);
+};
+
+const buildWeekTip = (profile, stageGroup) => {
+  const stageTip = STAGE_TIP_LIBRARY[stageGroup] || STAGE_TIP_LIBRARY.vegetative;
+  const profileTip = profile.stageNotes?.[stageGroup];
+  return profileTip ? `${stageTip} ${profileTip}` : stageTip;
+};
+
+const timeline = (prompt = "") => {
+  const cropInput = parseCropFromPrompt(prompt);
+  const plantingDate = parsePlantingDateFromPrompt(prompt);
+  const start = new Date(`${plantingDate}T00:00:00`);
+  const safeStart = Number.isNaN(start.getTime()) ? new Date() : start;
+  const profile = resolveCropProfile(cropInput);
+  const total = Math.max(6, Math.min(40, Number(profile.totalWeeks || 14)));
+
   return {
-    crop_name: crop,
+    crop_name: profile.name || toTitleCase(cropInput) || "Crop",
     total_weeks: total,
-    expected_harvest_date: iso(start.getTime() + total * 7 * 86400000),
-    timeline: Array.from({ length: total }).map((_, k) => ({
-      week: k + 1,
-      stage: k < 2 ? "Seedling establishment" : k < 6 ? "Vegetative growth" : k < 10 ? "Flowering" : "Development",
-      activities: ["Check soil moisture and irrigation uniformity.", "Scout for pests and foliar lesions."],
-      tips: "Record observations each week and adjust interventions.",
-    })),
-    watering_schedule: "Early-morning irrigation; adjust by evapotranspiration.",
-    fertilizer_plan: "Balanced NPK early, potassium-forward later.",
-    soil_requirements: "Well-drained soil with stable organic matter.",
+    expected_harvest_date: iso(safeStart.getTime() + total * 7 * 86400000),
+    timeline: Array.from({ length: total }).map((_, index) => {
+      const week = index + 1;
+      const stage = getStageForWeek(profile, week);
+      return {
+        week,
+        stage: stage.label,
+        activities: buildWeekActivities(profile, stage.group, week),
+        tips: buildWeekTip(profile, stage.group),
+      };
+    }),
+    watering_schedule: profile.watering,
+    fertilizer_plan: profile.fertilizer,
+    soil_requirements: profile.soil,
+  };
+};
+
+const normalizeTimelineOutput = (candidate, fallback) => {
+  const parsed = obj(candidate);
+  if (!parsed) return fallback;
+
+  const fallbackWeeks = clamp(i(fallback?.total_weeks, 14), 6, 40);
+  const weeks = clamp(i(parsed.total_weeks, fallbackWeeks), 6, 40);
+  const sourceTimeline = Array.isArray(parsed.timeline) ? parsed.timeline : [];
+  const minimumUsefulRows = Math.min(6, weeks);
+  if (sourceTimeline.length < minimumUsefulRows) return fallback;
+
+  const mergedTimeline = Array.from({ length: weeks }).map((_, index) => {
+    const week = index + 1;
+    const fallbackWeek = fallback.timeline?.[index] || fallback.timeline?.[fallback.timeline.length - 1] || null;
+    const sourceWeek = obj(sourceTimeline[index]) || {};
+    const stage = String(sourceWeek.stage || fallbackWeek?.stage || "Field operations").trim() || "Field operations";
+    const tips = String(sourceWeek.tips || fallbackWeek?.tips || "").trim() || "Track crop condition weekly and adjust field operations.";
+    const sourceActivities = Array.isArray(sourceWeek.activities) ? sourceWeek.activities : [];
+    const activities = uniqueStrings(
+      sourceActivities
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+        .slice(0, 4)
+    );
+    return {
+      week,
+      stage,
+      activities: activities.length ? activities : fallbackWeek?.activities || [],
+      tips,
+    };
+  });
+
+  return {
+    crop_name: String(parsed.crop_name || fallback.crop_name || "Crop").trim() || fallback.crop_name || "Crop",
+    total_weeks: weeks,
+    expected_harvest_date: String(parsed.expected_harvest_date || fallback.expected_harvest_date || "").trim() || fallback.expected_harvest_date,
+    timeline: mergedTimeline,
+    watering_schedule: String(parsed.watering_schedule || fallback.watering_schedule || "").trim() || fallback.watering_schedule,
+    fertilizer_plan: String(parsed.fertilizer_plan || fallback.fertilizer_plan || "").trim() || fallback.fertilizer_plan,
+    soil_requirements: String(parsed.soil_requirements || fallback.soil_requirements || "").trim() || fallback.soil_requirements,
   };
 };
 
@@ -947,6 +1398,13 @@ export async function buildLlmResponse(payload = {}, options = {}) {
   }
 
   const type = schemaType(schema);
+
+  if (type === "timeline") {
+    const fallbackTimeline = shape(schema, timeline(prompt));
+    const aiTimeline = await callConfiguredModel({ prompt, schema, fileUrls, options, type });
+    if (aiTimeline == null) return fallbackTimeline;
+    return shape(schema, normalizeTimelineOutput(aiTimeline, fallbackTimeline));
+  }
 
   if (type === "weather" || type === "weather_widget" || type === "weather_recs") {
     const w = await weather(prompt);
