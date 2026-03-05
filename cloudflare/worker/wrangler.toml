@@ -1,0 +1,19 @@
+name = "verdent-vision-api"
+main = "src/index.js"
+compatibility_date = "2026-03-05"
+
+[vars]
+API_PREFIX = "/api/v1"
+CORS_ORIGINS = "https://your-frontend-domain.com"
+FORCE_HTTPS = "true"
+ALLOW_SOCIAL_PROFILE_ONLY = "false"
+EXPOSE_RESET_DEBUG_URL = "false"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "verdent-vision"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+[[r2_buckets]]
+binding = "UPLOADS_BUCKET"
+bucket_name = "verdent-vision-uploads"
