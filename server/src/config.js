@@ -31,6 +31,14 @@ const toText = (value, fallback = "") => {
   return text || fallback;
 };
 
+const toSameSite = (value, fallback = "Lax") => {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  if (normalized === "strict") return "Strict";
+  if (normalized === "none") return "None";
+  if (normalized === "lax") return "Lax";
+  return fallback;
+};
+
 const resolveFromRoot = (value) => {
   if (!value) return value;
   return path.isAbsolute(value) ? value : path.resolve(process.cwd(), value);
@@ -82,8 +90,8 @@ export function loadConfig(env = process.env) {
     cookies: {
       sessionName: sessionCookieName,
       csrfName: csrfCookieName,
-      secure: toBool(env.SESSION_COOKIE_SECURE, isProduction),
-      sameSite: env.SESSION_COOKIE_SAMESITE || "Lax",
+      secure: isProduction ? true : toBool(env.SESSION_COOKIE_SECURE, false),
+      sameSite: toSameSite(env.SESSION_COOKIE_SAMESITE, "Lax"),
       path: "/",
     },
     rateLimits: {
