@@ -1647,10 +1647,19 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
           }
 
           const body = await readJsonBody(req, config.requestLimits.jsonBodyBytes);
-          const payload = isObject(body) ? body : {};
+          const payload = sanitizeEntityPayload(entityName, body, { isUpdate: false });
           const item = await db.transact((draft) => {
             if (entityName === "User") {
               throw createHttpError(403, "Use dedicated user management endpoints.", "forbidden");
+            }
+
+            if (entityName === "ForumComment") {
+              const parentPost = (draft.entities.ForumPost || []).find(
+                (post) => String(post?.id || "") === String(payload.post_id || "")
+              );
+              if (!parentPost) {
+                throw createHttpError(400, "Referenced post does not exist.", "invalid_post_id");
+              }
             }
 
             const collection = draft.entities[entityName] || [];
@@ -1664,6 +1673,19 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
               created_by_email: normalizeEmail(context.user.email || ""),
             };
             draft.entities[entityName] = [record, ...collection];
+
+            if (entityName === "ForumComment") {
+              const postId = String(record.post_id || "");
+              const totalComments = (draft.entities.ForumComment || []).filter(
+                (entry) => String(entry?.post_id || "") === postId
+              ).length;
+              draft.entities.ForumPost = (draft.entities.ForumPost || []).map((post) =>
+                String(post?.id || "") === postId
+                  ? { ...post, comments_count: totalComments, updated_date: nowIso() }
+                  : post
+              );
+            }
+
             return record;
           });
 
@@ -1731,6 +1753,23 @@ ${prompt || "Analyze the attached crop image and provide guidance."}`;
               throw createHttpError(403, "Access denied.", "forbidden");
             }
             draft.entities[entityName] = collection.filter((record) => record.id !== id);
+
+            if (entityName === "ForumPost") {
+              draft.entities.ForumComment = (draft.entities.ForumComment || []).filter(
+                (comment) => String(comment?.post_id || "") !== String(id)
+              );
+            }
+            if (entityName === "ForumComment") {
+              const postId = String(existing.post_id || "");
+              const totalComments = (draft.entities.ForumComment || []).filter(
+                (entry) => String(entry?.post_id || "") === postId
+              ).length;
+              draft.entities.ForumPost = (draft.entities.ForumPost || []).map((post) =>
+                String(post?.id || "") === postId
+                  ? { ...post, comments_count: totalComments, updated_date: nowIso() }
+                  : post
+              );
+            }
             return true;
           });
 
