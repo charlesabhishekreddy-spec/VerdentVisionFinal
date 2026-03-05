@@ -742,6 +742,7 @@ export async function createApp(config) {
       scope = "auth";
     } else if (
       routePath.startsWith("/integrations/core/invoke-llm") ||
+      routePath.startsWith("/ai/farm-advice") ||
       routePath.startsWith("/ai/diagnose-plant")
     ) {
       bucket = config.rateLimits.llm;
