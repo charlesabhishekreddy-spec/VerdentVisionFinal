@@ -245,7 +245,10 @@ const applySecurityHeaders = (res, isSecureRequest) => {
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
   res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
   res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
-  res.setHeader("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; connect-src 'self'; img-src 'self' data:;"
+  );
   if (isSecureRequest) {
     res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
   }
