@@ -6,34 +6,85 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { appClient } from "@/api/appClient";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import RecurringTaskForm from "./RecurringTaskForm.jsx";
 
-export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks }) {
-  const [formData, setFormData] = useState(task || {
-    title: "",
-    description: "",
-    task_type: "watering",
-    due_date: "",
-    priority: "medium",
-    status: "pending",
-    crop_name: "",
-    location: "",
-    weather_dependent: false,
-    assigned_to: "",
-    depends_on: []
-  });
+const toDateOnly = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+};
 
-  // Fetch all users for assignment
-  const { data: users = [] } = useQuery({
-    queryKey: ['all-users'],
-    queryFn: () => appClient.entities.User.list(),
-  });
+const normalizeInitialTask = (task) => {
+  if (!task) {
+    return {
+      title: "",
+      description: "",
+      task_type: "watering",
+      due_date: "",
+      priority: "medium",
+      status: "pending",
+      crop_name: "",
+      location: "",
+      weather_dependent: false,
+      assigned_to: "",
+      depends_on: [],
+      is_recurring: false,
+      recurrence_pattern: "weekly",
+      recurrence_end_date: "",
+    };
+  }
+
+  return {
+    ...task,
+    due_date: toDateOnly(task.due_date),
+    recurrence_end_date: toDateOnly(task.recurrence_end_date),
+    depends_on: Array.isArray(task.depends_on) ? task.depends_on : [],
+    assigned_to: task.assigned_to || "",
+    is_recurring: Boolean(task.is_recurring),
+    recurrence_pattern: task.recurrence_pattern || "weekly",
+  };
+};
+
+export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks, users = [] }) {
+  const [formData, setFormData] = useState(normalizeInitialTask(task));
+  const [formError, setFormError] = useState("");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    if (!formData.title?.trim()) {
+      setFormError("Task title is required.");
+      return;
+    }
+
+    const dueDate = toDateOnly(formData.due_date);
+    if (!dueDate) {
+      setFormError("Please select a valid due date.");
+      return;
+    }
+
+    if (formData.is_recurring && formData.recurrence_end_date) {
+      const recurrenceEnd = toDateOnly(formData.recurrence_end_date);
+      if (recurrenceEnd && recurrenceEnd < dueDate) {
+        setFormError("Recurrence end date cannot be before due date.");
+        return;
+      }
+    }
+    setFormError("");
+
+    const payload = {
+      ...formData,
+      title: String(formData.title || "").trim(),
+      description: String(formData.description || "").trim(),
+      crop_name: String(formData.crop_name || "").trim(),
+      location: String(formData.location || "").trim(),
+      due_date: dueDate,
+      recurrence_end_date: formData.is_recurring ? toDateOnly(formData.recurrence_end_date) || null : null,
+      assigned_to: formData.assigned_to || null,
+      depends_on: Array.isArray(formData.depends_on) ? formData.depends_on : [],
+    };
+
+    onSubmit(payload);
   };
 
   return (
@@ -48,13 +99,22 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
       </CardHeader>
       <CardContent className="p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          {formError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          ) : null}
+
           <div className="grid md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="title">Task Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, title: e.target.value });
+                  if (formError) setFormError("");
+                }}
                 placeholder="e.g., Water tomato plants"
                 required
               />
@@ -165,14 +225,14 @@ export default function TaskForm({ task, onSubmit, onCancel, isLoading, allTasks
             <div>
               <Label htmlFor="assigned_to">Assign To</Label>
               <Select
-                value={formData.assigned_to || ""}
-                onValueChange={(value) => setFormData({ ...formData, assigned_to: value || undefined })}
+                value={formData.assigned_to || "unassigned"}
+                onValueChange={(value) => setFormData({ ...formData, assigned_to: value === "unassigned" ? "" : value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select user (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={null}>Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {users.map(user => (
                     <SelectItem key={user.id} value={user.email}>
                       {user.full_name} ({user.email})
