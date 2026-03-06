@@ -122,6 +122,7 @@ export default {
       return errorJson("https_required", "HTTPS is required.", 426, cors.headers);
     }
 
+    try {
     if (url.pathname === "/healthz" || url.pathname === `${prefix}/healthz`) {
       return json(
         {
@@ -234,8 +235,18 @@ export default {
       501,
       cors.headers
     );
+    } catch (error) {
+      console.error("[worker] request failed", {
+        method: request.method,
+        path: url.pathname,
+        message: String(error?.message || error || "Unknown error"),
+        stack: String(error?.stack || ""),
+      });
+      return errorJson("internal_error", String(error?.message || "Internal server error."), 500, cors.headers);
+    }
   },
 };
+
 
 
 
