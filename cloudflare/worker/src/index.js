@@ -13,6 +13,7 @@ import {
 import { handleEntityRequest } from "./entities.js";
 import { inviteUser, listSecurityAuthEvents, listUsers, updateUser } from "./admin.js";
 import { invokeLlm, uploadTransientFile } from "./llm.js";
+import { diagnosePlantImage } from "./diagnosis.js";
 
 const mergeHeaders = (headers = {}) => {
   const merged = new Headers(headers);
@@ -341,12 +342,15 @@ export default {
       }
 
       if (url.pathname === `${prefix}/ai/diagnose-plant` && request.method === "POST") {
-        return errorJson(
-          "not_implemented",
-          "AI plant diagnosis is not migrated to the Cloudflare worker yet.",
-          501,
-          cors.headers
-        );
+        const auth = await requireMutationAuth(request, env, cors.headers);
+        if (!auth.ok) return auth.response;
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
+        const diagnosis = await diagnosePlantImage({
+          fileUrl: String(parsed.body?.file_url || ""),
+          env,
+        });
+        return json(diagnosis, 200, cors.headers);
       }
 
       return errorJson(
@@ -370,5 +374,6 @@ export default {
     }
   },
 };
+
 
 
