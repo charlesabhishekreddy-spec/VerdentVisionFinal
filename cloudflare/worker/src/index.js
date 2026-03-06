@@ -28,6 +28,24 @@ const parseAllowedOrigins = (value = "") =>
     .map((item) => normalizeOrigin(item))
     .filter(Boolean);
 
+const originMatchesPattern = (origin, pattern) => {
+  if (!origin || !pattern) return false;
+  if (origin === pattern) return true;
+
+  const wildcardMatch = String(pattern).match(/^(https?):\/\/\*\.(.+)$/i);
+  if (!wildcardMatch) return false;
+
+  try {
+    const originUrl = new URL(origin);
+    const expectedProtocol = `${wildcardMatch[1].toLowerCase()}:`;
+    const expectedHostSuffix = wildcardMatch[2].toLowerCase();
+    const originHost = String(originUrl.hostname || "").toLowerCase();
+    return originUrl.protocol === expectedProtocol && originHost.endsWith(`.${expectedHostSuffix}`);
+  } catch {
+    return false;
+  }
+};
+
 const withSecurityHeaders = (headers, isSecureRequest) => {
   headers.set("x-content-type-options", "nosniff");
   headers.set("x-frame-options", "DENY");
@@ -53,7 +71,7 @@ const applyCors = (request, env, headers) => {
   if (!origin) return { allowed: true, headers };
 
   const allowedOrigins = parseAllowedOrigins(env.CORS_ORIGINS || "");
-  if (!allowedOrigins.includes(origin)) {
+  if (!allowedOrigins.some((pattern) => originMatchesPattern(origin, pattern))) {
     return { allowed: false, headers };
   }
 
@@ -218,5 +236,8 @@ export default {
     );
   },
 };
+
+
+
 
 
