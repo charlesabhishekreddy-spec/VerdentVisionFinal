@@ -1,27 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Shield, Sprout, User } from "lucide-react";
-import { appClient } from "@/api/appClient";
+import { useAuth } from "@/lib/AuthContext";
 
 const HOME_PATH = "/";
 const HOME_ALIAS = createPageUrl("Home");
 
 export default function Layout({ children, currentPageName: _currentPageName }) {
   const location = useLocation();
-  const [currentUser, setCurrentUser] = useState(null);
-
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const user = await appClient.auth.me();
-        setCurrentUser(user);
-      } catch (error) {
-        console.error("Failed to fetch user:", error);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user: currentUser } = useAuth();
 
   const navItems = useMemo(
     () => [

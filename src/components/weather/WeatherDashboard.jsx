@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { CloudRain, Wind, Droplets, Thermometer, AlertTriangle, RefreshCw, Loader2, Sun, Cloud, CloudDrizzle, CloudSnow, MapPin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { getBrowserLocation } from "@/lib/browserLocation";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function WeatherDashboard({ compact = false, className = "" }) {
   const [weatherData, setWeatherData] = useState(null);
@@ -12,11 +13,11 @@ export default function WeatherDashboard({ compact = false, className = "" }) {
   const [alerts, setAlerts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [locationSource, setLocationSource] = useState("default");
+  const { user } = useAuth();
 
   const fetchWeather = async ({ forceRefreshLocation = false } = {}) => {
     setIsLoading(true);
     try {
-      const user = await appClient.auth.me();
       const profileLocation = String(user?.location || "").trim();
       const browserLocation = await getBrowserLocation({ forceRefresh: forceRefreshLocation });
       const source = browserLocation ? "gps" : profileLocation ? "profile" : "default";
@@ -333,3 +334,5 @@ Use actual real-time weather data from reliable sources.`,
     </Card>
   );
 }
+
+

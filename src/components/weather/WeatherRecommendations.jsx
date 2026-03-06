@@ -5,17 +5,18 @@ import { Lightbulb, Droplets, Bug, Sprout, Calendar, Loader2 } from "lucide-reac
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getBrowserLocation } from "@/lib/browserLocation";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function WeatherRecommendations({ className = "" }) {
   const [recommendations, setRecommendations] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { user } = useAuth();
 
   const fetchRecommendations = async ({ forceRefreshLocation = false } = {}) => {
     setIsLoading(true);
     setError("");
     try {
-      const user = await appClient.auth.me();
       const profileLocation = String(user?.location || "").trim();
       const crops = user?.primary_crops || [];
       const farmingMethod = user?.farming_method || "conventional";
@@ -274,3 +275,5 @@ Be specific and actionable. Consider real-time weather patterns.`,
     </Card>
   );
 }
+
+
