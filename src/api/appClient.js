@@ -1,5 +1,7 @@
 const API_BASE = String(import.meta.env.VITE_API_BASE_URL || "/api/v1").replace(/\/+$/, "");
 const CSRF_COOKIE_NAME = String(import.meta.env.VITE_CSRF_COOKIE_NAME || "vv_csrf");
+const CSRF_TOKEN_KEY = "aerovanta_csrf_token";
+const LEGACY_CSRF_TOKEN_KEY = "verdent_csrf_token";
 const DEVICE_KEY = "aerovanta_device_id";
 const LEGACY_DEVICE_KEY = "verdent_device_id";
 const REQUEST_TIMEOUT_MS = (() => {
@@ -50,6 +52,30 @@ const readJsonSafe = async (response) => {
   }
 };
 
+const getStoredCsrfToken = () => {
+  const token = storage.getItem(CSRF_TOKEN_KEY) || storage.getItem(LEGACY_CSRF_TOKEN_KEY) || "";
+  if (token && !storage.getItem(CSRF_TOKEN_KEY)) {
+    storage.setItem(CSRF_TOKEN_KEY, token);
+  }
+  return token;
+};
+
+const setStoredCsrfToken = (token) => {
+  const normalized = String(token || "").trim();
+  if (!normalized) {
+    storage.removeItem(CSRF_TOKEN_KEY);
+    storage.removeItem(LEGACY_CSRF_TOKEN_KEY);
+    return;
+  }
+  storage.setItem(CSRF_TOKEN_KEY, normalized);
+};
+
+const syncCsrfTokenFromResponse = (response) => {
+  const responseToken = response?.headers?.get?.("x-csrf-token");
+  if (responseToken == null) return;
+  setStoredCsrfToken(responseToken);
+};
+
 const isMutatingMethod = (method) => !["GET", "HEAD", "OPTIONS"].includes(String(method || "GET").toUpperCase());
 
 const toBase64 = (file) =>
@@ -76,7 +102,7 @@ const request = async (path, { method = "GET", body, useCsrf = true, signal } = 
   }
 
   if (useCsrf && isMutatingMethod(upperMethod)) {
-    const csrfToken = getCookieValue(CSRF_COOKIE_NAME);
+    const csrfToken = getCookieValue(CSRF_COOKIE_NAME) || getStoredCsrfToken();
     if (csrfToken) headers["X-CSRF-Token"] = csrfToken;
   }
 
@@ -107,6 +133,7 @@ const request = async (path, { method = "GET", body, useCsrf = true, signal } = 
     signal?.removeEventListener?.("abort", abortFromExternalSignal);
   }
 
+  syncCsrfTokenFromResponse(response);
   const payload = await readJsonSafe(response);
   if (!response.ok) {
     const apiMessage = payload?.error?.message || payload?.message || `Request failed with status ${response.status}.`;
@@ -278,6 +305,7 @@ export const appClient = {
       await request("/auth/logout", {
         method: "POST",
       });
+      setStoredCsrfToken("");
       if (redirectTo) window.location.href = redirectTo;
     },
 
@@ -335,3 +363,5 @@ export const appClient = {
     },
   },
 };
+
+

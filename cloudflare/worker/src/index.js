@@ -1,7 +1,10 @@
 import { getDatabaseHealth } from "./db.js";
 import {
   getAuthContext,
+  getRequestCsrfToken,
+  listSessions,
   logout,
+  logoutOtherSessions,
   registerWithEmail,
   requireCsrf,
   sanitizeUser,
@@ -89,6 +92,7 @@ const applyCors = (request, env, headers) => {
   headers.set("access-control-allow-credentials", "true");
   headers.set("access-control-allow-methods", "GET,POST,PATCH,DELETE,OPTIONS");
   headers.set("access-control-allow-headers", "Content-Type, X-CSRF-Token, X-Device-Id, X-Request-Id");
+  headers.set("access-control-expose-headers", "X-CSRF-Token, X-Request-Id");
   return { allowed: true, headers };
 };
 
@@ -198,7 +202,10 @@ export default {
       if (url.pathname === `${prefix}/auth/me` && request.method === "GET") {
         const auth = await requireAuth(request, env, cors.headers);
         if (!auth.ok) return auth.response;
-        return json(sanitizeUser(auth.context.user), 200, cors.headers);
+        const responseHeaders = new Headers(cors.headers);
+        const csrfToken = getRequestCsrfToken(request, env);
+        if (csrfToken) responseHeaders.set("x-csrf-token", csrfToken);
+        return json(sanitizeUser(auth.context.user), 200, responseHeaders);
       }
 
       if (url.pathname === `${prefix}/auth/login/email` && request.method === "POST") {
@@ -240,6 +247,23 @@ export default {
         );
       }
 
+      if (url.pathname === `${prefix}/enterprise/sessions` && request.method === "GET") {
+        const auth = await requireAuth(request, env, cors.headers);
+        if (!auth.ok) return auth.response;
+        const result = await listSessions(env, auth.context, url.searchParams.get("email") || "");
+        if (!result.ok) return errorJson(result.code, result.message, result.status, cors.headers);
+        return json(result.data, result.status, cors.headers);
+      }
+
+      if (url.pathname === `${prefix}/enterprise/sessions/logout-others` && request.method === "POST") {
+        const auth = await requireMutationAuth(request, env, cors.headers);
+        if (!auth.ok) return auth.response;
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
+        const result = await logoutOtherSessions(env, auth.context, parsed.body?.email || "");
+        if (!result.ok) return errorJson(result.code, result.message, result.status, cors.headers);
+        return json(result.data, result.status, cors.headers);
+      }
       if (url.pathname === `${prefix}/integrations/core/invoke-llm` && request.method === "POST") {
         const auth = await requireMutationAuth(request, env, cors.headers);
         if (!auth.ok) return auth.response;
@@ -312,3 +336,5 @@ export default {
     }
   },
 };
+
+

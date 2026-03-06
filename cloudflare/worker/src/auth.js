@@ -122,6 +122,10 @@ export const sanitizeUser = (user) => {
 
 const getSessionCookieName = (env) => String(env.SESSION_COOKIE_NAME || "vv_session");
 const getCsrfCookieName = (env) => String(env.CSRF_COOKIE_NAME || "vv_csrf");
+export const getRequestCsrfToken = (request, env) => {
+  const cookies = parseCookies(request?.headers?.get?.("cookie") || "");
+  return String(cookies[getCsrfCookieName(env)] || "").trim();
+};
 const getPasswordIterations = (env) => {
   const requested = Number.parseInt(String(env.PASSWORD_ITERATIONS || "100000"), 10) || 100000;
   return Math.min(Math.max(requested, 10000), MAX_PBKDF2_ITERATIONS);
@@ -423,6 +427,7 @@ export const signInWithEmail = async (request, env, payload = {}) => {
 
   const headers = new Headers();
   appendAuthCookies(headers, env, sessionRecord.token, sessionRecord.csrfToken, remember);
+  headers.set("x-csrf-token", sessionRecord.csrfToken);
   return {
     ok: true,
     status: 200,
@@ -489,6 +494,7 @@ export const registerWithEmail = async (request, env, payload = {}) => {
 
   const headers = new Headers();
   appendAuthCookies(headers, env, sessionRecord.token, sessionRecord.csrfToken, remember);
+  headers.set("x-csrf-token", sessionRecord.csrfToken);
   return {
     ok: true,
     status: 201,
@@ -501,6 +507,7 @@ export const logout = async (request, env) => {
   const context = await getAuthContext(request, env, { touch: false });
   const headers = new Headers();
   appendClearAuthCookies(headers, env);
+  headers.set("x-csrf-token", "");
 
   if (!context) {
     return {
@@ -533,3 +540,70 @@ export const logout = async (request, env) => {
 
 
 
+
+export const listSessions = async (env, context, requestedEmail = "") => {
+  const email = normalizeEmail(requestedEmail || context?.user?.email || "");
+  if (!email) {
+    return { ok: false, status: 400, code: "invalid_email", message: "Email is required." };
+  }
+  const currentEmail = normalizeEmail(context?.user?.email || "");
+  if (context?.user?.role !== "admin" && email !== currentEmail) {
+    return { ok: false, status: 403, code: "forbidden", message: "Access denied." };
+  }
+
+  const result = await env.DB.prepare(
+    `
+      SELECT payload_json FROM auth_sessions
+      WHERE user_email = ?1
+        AND (revoked_date IS NULL OR revoked_date = '')
+        AND expires_at > ?2
+      ORDER BY COALESCE(last_active, created_date) DESC
+    `
+  )
+    .bind(email, nowIso())
+    .all();
+
+  const rows = Array.isArray(result?.results) ? result.results : [];
+  const sessions = rows
+    .map((row) => safeParseJson(row?.payload_json, null))
+    .filter((entry) => entry && typeof entry === "object")
+    .map((session) => ({
+      id: session.id,
+      last_active: session.last_active || session.updated_date || session.created_date || "",
+      expires_at: session.expires_at || "",
+      is_current_session: String(session.id || "") === String(context?.session?.id || ""),
+      is_current_device: String(session.device_id || "") === String(context?.session?.device_id || ""),
+      device_info: {
+        platform: session.device_id ? "Known device" : "Device",
+        userAgent: session.ip ? `IP ${session.ip}` : "Unknown device",
+      },
+    }));
+
+  return { ok: true, status: 200, data: sessions };
+};
+
+export const logoutOtherSessions = async (env, context, requestedEmail = "") => {
+  const email = normalizeEmail(requestedEmail || context?.user?.email || "");
+  if (!email) {
+    return { ok: false, status: 400, code: "invalid_email", message: "Email is required." };
+  }
+  const currentEmail = normalizeEmail(context?.user?.email || "");
+  if (context?.user?.role !== "admin" && email !== currentEmail) {
+    return { ok: false, status: 403, code: "forbidden", message: "Access denied." };
+  }
+
+  const now = nowIso();
+  await env.DB.prepare(
+    `
+      UPDATE auth_sessions
+      SET revoked_date = ?1, updated_date = ?1
+      WHERE user_email = ?2
+        AND id != ?3
+        AND (revoked_date IS NULL OR revoked_date = '')
+    `
+  )
+    .bind(now, email, String(context?.session?.id || ""))
+    .run();
+
+  return { ok: true, status: 200, data: { success: true } };
+};
