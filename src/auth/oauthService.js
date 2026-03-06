@@ -384,3 +384,4 @@ export async function loginWithSocial(provider) {
   if (normalizedProvider === "facebook") return loginWithFacebook();
   throw new Error("Unsupported social provider.");
 }
+
