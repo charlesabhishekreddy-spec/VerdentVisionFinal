@@ -1,4 +1,4 @@
-const DEFAULT_LOCATION = "Des Moines, Iowa, United States";
+﻿const DEFAULT_LOCATION = "Des Moines, Iowa, United States";
 const DEFAULT_GEMINI_MODEL = "gemini-2.5-flash";
 const DEFAULT_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com";
 const ALLOWED_UPLOAD_MIME = new Set([
@@ -562,7 +562,8 @@ const buildTreatmentFallbackSet = (prompt = "") => {
   const disease = promptField(prompt, "Disease") || "observed disease";
   const severity = normalizeKey(promptField(prompt, "Severity"));
   const provisional = /Confidence Mode:\s*provisional/i.test(String(prompt || ""));
-  const bucket = inferDiseaseBucket(disease);
+  const diseaseTypeHint = promptField(prompt, "Disease Type");
+  const bucket = inferDiseaseBucket(diseaseTypeHint || disease);
   const baseSafety = provisional
     ? ["Confirm with a clearer image before aggressive chemical use.", "Follow local label and pre-harvest interval requirements."]
     : ["Wear gloves, eye protection, and follow crop label restrictions.", "Rotate modes of action to reduce resistance pressure."];
@@ -864,6 +865,10 @@ export const invokeLlm = async (payload = {}, env = {}) => {
     return shape(schema, out);
   }
 
+  if (type === "treatments") {
+    return buildTreatmentsFallback(schema, prompt);
+  }
+
   const aiOut = await callGemini({ prompt, schema, fileUrls, env });
   if (aiOut != null) {
     if (type === "treatments") return normalizeTreatmentOutput(schema, prompt, aiOut?.treatments);
@@ -876,6 +881,7 @@ export const invokeLlm = async (payload = {}, env = {}) => {
   if (type === "treatments") return buildTreatmentsFallback(schema, prompt);
   return shape(schema, generic(schema));
 };
+
 
 
 

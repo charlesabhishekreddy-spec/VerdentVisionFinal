@@ -264,6 +264,36 @@ const normalizeTreatmentEntry = (candidate, fallback) => {
   };
 };
 
+const buildDiagnosisSignature = (diagnosis) => {
+  const diseaseBucket = normalizeKey(diagnosis?.disease_type || inferDiseaseBucket(diagnosis));
+  const severity = normalizeKey(diagnosis?.severity || "moderate");
+  const confidenceMode = diagnosis?.requires_manual_review ? "provisional" : "verified";
+  return [
+    normalizeKey(diagnosis?.plant_name),
+    normalizeKey(diagnosis?.disease_name),
+    diseaseBucket || "uncertain",
+    severity || "moderate",
+    confidenceMode,
+  ].join("|");
+};
+
+const buildTreatmentPrompt = (diagnosis) => {
+  const confidenceMode = diagnosis?.requires_manual_review ? "provisional_low_confidence" : "verified_high_confidence";
+  return `You are generating a canonical, deterministic treatment plan for a saved plant diagnosis.
+
+Plant: ${diagnosis?.plant_name || "Unknown crop"}
+Disease: ${diagnosis?.disease_name || "Unknown disease"}
+Disease Type: ${diagnosis?.disease_type || inferDiseaseBucket(diagnosis)}
+Severity: ${diagnosis?.severity || "moderate"}
+Infection Level: ${diagnosis?.infection_level || diagnosis?.confidence_score || 0}%
+Confidence Mode: ${confidenceMode}
+Symptoms: ${(diagnosis?.symptoms || []).join(", ") || "not provided"}
+Diagnosis Notes: ${diagnosis?.diagnosis_notes || "not provided"}
+
+Return the same stable 4-treatment plan for the same diagnosis signature every time.
+Provide exactly 4 treatments: 2 chemical and 2 organic.`;
+};
+
 const normalizeTreatmentSet = (items, diagnosis) => {
   const fallbacks = buildFallbackTreatments(diagnosis);
   const source = Array.isArray(items) ? items : [];
@@ -283,7 +313,8 @@ export default function TreatmentRecommendations({ diagnosis }) {
     String(diagnosis?.disease_name || "").toLowerCase().includes("uncertain");
 
   const isProvisional = Boolean(diagnosis?.requires_manual_review);
-  const diagnosisSignature = `${normalizeKey(diagnosis?.plant_name)}|${normalizeKey(diagnosis?.disease_name)}`;
+  const diagnosisSignature = useMemo(() => buildDiagnosisSignature(diagnosis), [diagnosis]);
+  const treatmentPrompt = useMemo(() => buildTreatmentPrompt(diagnosis), [diagnosis]);
   const fallbackTreatments = useMemo(() => normalizeTreatmentSet([], diagnosis), [diagnosis]);
 
   const fetchTreatments = async ({ forceRefresh = false } = {}) => {
@@ -298,7 +329,6 @@ export default function TreatmentRecommendations({ diagnosis }) {
     setLoadError("");
     try {
       const scopedTreatments = await appClient.entities.Treatment.filter({
-        disease_name: diagnosis.disease_name,
         diagnosis_signature: diagnosisSignature,
       });
       const normalizedScopedTreatments = normalizeTreatmentSet(
@@ -323,7 +353,31 @@ export default function TreatmentRecommendations({ diagnosis }) {
       if (hasCompleteScopedSet && !forceRefresh) {
         setTreatments(normalizedScopedTreatments);
       } else {
-        const nextTreatments = fallbackTreatments;
+        const result = await appClient.integrations.Core.InvokeLLM({
+          prompt: treatmentPrompt,
+          response_json_schema: {
+            type: "object",
+            properties: {
+              treatments: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    type: { type: "string", enum: ["chemical", "organic"] },
+                    proportions: { type: "string" },
+                    frequency: { type: "string" },
+                    description: { type: "string" },
+                    safety_precautions: { type: "array", items: { type: "string" } },
+                    effectiveness_rating: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const nextTreatments = normalizeTreatmentSet(result?.treatments, diagnosis);
         const newlySavedTreatments = [];
 
         for (let index = 0; index < nextTreatments.length; index += 1) {
@@ -339,6 +393,9 @@ export default function TreatmentRecommendations({ diagnosis }) {
             effectiveness_rating: treatment.effectiveness_rating,
             diagnosis_signature: diagnosisSignature,
             plant_name: diagnosis.plant_name,
+            disease_type: diagnosis?.disease_type || inferDiseaseBucket(diagnosis),
+            severity_bucket: diagnosis?.severity || "moderate",
+            confidence_mode: isProvisional ? "provisional" : "verified",
             is_favorite: false,
           };
           const existing = scopedTreatments[index];
@@ -395,6 +452,9 @@ export default function TreatmentRecommendations({ diagnosis }) {
           effectiveness_rating: treatment.effectiveness_rating,
           diagnosis_signature: diagnosisSignature,
           plant_name: diagnosis.plant_name,
+          disease_type: diagnosis?.disease_type || inferDiseaseBucket(diagnosis),
+          severity_bucket: diagnosis?.severity || "moderate",
+          confidence_mode: isProvisional ? "provisional" : "verified",
           is_favorite: true,
         });
       }
