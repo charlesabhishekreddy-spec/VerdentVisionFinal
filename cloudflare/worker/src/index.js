@@ -11,7 +11,9 @@ import {
   requestPasswordReset,
   requireCsrf,
   sanitizeUser,
+  updateProfile,
   signInWithEmail,
+  signInWithSocial,
   validatePasswordResetToken,
 } from "./auth.js";
 import { handleEntityRequest } from "./entities.js";
@@ -234,6 +236,16 @@ export default {
         return json(result.user, result.status, responseHeaders);
       }
 
+      if (url.pathname === `${prefix}/auth/me` && request.method === "PATCH") {
+        const auth = await requireMutationAuth(request, env, cors.headers);
+        if (!auth.ok) return auth.response;
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
+        const result = await updateProfile(env, auth.context, parsed.body);
+        if (!result.ok) return errorJson(result.code, result.message, result.status, cors.headers);
+        return json(result.user, result.status, cors.headers);
+      }
+
       if (url.pathname === `${prefix}/auth/password-reset/request` && request.method === "POST") {
         const parsed = await readJsonBody(request);
         if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
@@ -267,6 +279,16 @@ export default {
         if (!result.ok) return errorJson(result.code, result.message, result.status, cors.headers);
         return json(result.data, result.status, cors.headers);
       }
+      if (url.pathname === `${prefix}/auth/social` && request.method === "POST") {
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
+        const result = await signInWithSocial(request, env, parsed.body);
+        if (!result.ok) return errorJson(result.code, result.message, result.status, cors.headers);
+        const responseHeaders = new Headers(cors.headers);
+        result.headers?.forEach((value, key) => responseHeaders.append(key, value));
+        return json(result.user, result.status, responseHeaders);
+      }
+
       if (url.pathname === `${prefix}/auth/logout` && request.method === "POST") {
         const result = await logout(request, env);
         const responseHeaders = new Headers(cors.headers);
@@ -277,14 +299,6 @@ export default {
         return json(result.data, result.status, responseHeaders);
       }
 
-      if (url.pathname === `${prefix}/auth/social` && request.method === "POST") {
-        return errorJson(
-          "not_implemented",
-          "Social login is not migrated to the Cloudflare worker yet. Use email login/register first.",
-          501,
-          cors.headers
-        );
-      }
 
       if (url.pathname === `${prefix}/users` && request.method === "GET") {
         const auth = await requireAuth(request, env, cors.headers);
@@ -376,6 +390,50 @@ export default {
           body: parsed?.body || null,
         });
         return json(result.data, result.status, cors.headers);
+      }
+
+      if (url.pathname === `${prefix}/ai/farm-advice` && request.method === "POST") {
+        const auth = await requireMutationAuth(request, env, cors.headers);
+        if (!auth.ok) return auth.response;
+        const parsed = await readJsonBody(request);
+        if (!parsed.ok) return errorJson(parsed.code, parsed.message, parsed.status, cors.headers);
+        const body = parsed.body || {};
+        const prompt = String(body.prompt || "").replace(/\s+/g, " ").trim().slice(0, 4000);
+        const fileUrls = Array.isArray(body.file_urls)
+          ? body.file_urls.filter((item) => typeof item === "string" && item.trim()).slice(0, 2)
+          : [];
+        const conversation = Array.isArray(body.conversation)
+          ? body.conversation
+              .map((entry) => ({
+                role: String(entry?.role || "").toLowerCase() === "assistant" ? "Assistant" : "User",
+                content: String(entry?.content || "").replace(/\s+/g, " ").trim().slice(0, 1200),
+              }))
+              .filter((entry) => entry.content)
+              .slice(-12)
+          : [];
+        const locale = String(body.locale || "en-US").slice(0, 40);
+        if (!prompt && fileUrls.length === 0) {
+          return errorJson("invalid_prompt", "Prompt or image is required.", 400, cors.headers);
+        }
+        const composedPrompt = `You are Aerovanta AI Farming Assistant.
+Provide practical, crop-safe advice for farmers and growers.
+Rules:
+- Be accurate, concise, and actionable.
+- If uncertain, say what is uncertain and ask one clarifying question.
+- Prefer integrated pest management and safety-first recommendations.
+- Include dosage/frequency only if broadly safe; remind user to follow local labels/regulations.
+- Use markdown with short sections and bullets.
+
+User locale: ${locale}
+Current UTC date: ${new Date().toISOString().slice(0, 10)}
+
+Recent conversation:
+${conversation.map((entry) => `${entry.role}: ${entry.content}`).join("\n") || "None"}
+
+Current user request:
+${prompt || "Analyze the attached crop image and provide guidance."}`;
+        const result = await invokeLlm({ prompt: composedPrompt, file_urls: fileUrls }, env);
+        return json({ answer: typeof result === "string" ? result : JSON.stringify(result) }, 200, cors.headers);
       }
 
       if (url.pathname === `${prefix}/ai/diagnose-plant` && request.method === "POST") {

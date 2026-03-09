@@ -1,4 +1,4 @@
-﻿# Cloudflare Deployment Checklist (Point-by-Point)
+# Cloudflare Deployment Checklist (Point-by-Point)
 
 This checklist targets a no-billing baseline using Cloudflare services.
 
@@ -8,7 +8,7 @@ This checklist targets a no-billing baseline using Cloudflare services.
 2. Put all secrets in Cloudflare secrets, not in git:
    - `GEMINI_API_KEY`
    - `OPENAI_API_KEY` (optional fallback)
-   - OAuth client secrets (if used)
+   - `FACEBOOK_APP_SECRET` (required only for Facebook social login verification)
 3. Keep these production flags:
    - `NODE_ENV=production`
    - `FORCE_HTTPS=true`
@@ -25,7 +25,8 @@ This checklist targets a no-billing baseline using Cloudflare services.
 2. Build output directory: `dist`
 3. Add Pages environment variables:
    - `VITE_API_BASE_URL=https://<your-api-domain>/api/v1`
-   - OAuth IDs as needed
+   - `VITE_ENABLE_SOCIAL_LOGIN=true` only after Worker provider verification is configured
+   - `VITE_GOOGLE_CLIENT_ID`, `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID`, `VITE_FACEBOOK_APP_ID` as needed
 4. Add custom domain and enforce HTTPS.
 
 ## Point 3: Backend on Cloudflare Worker (Migration Path)
@@ -60,6 +61,12 @@ Starter scaffold included:
    - `wrangler secret put GEMINI_API_KEY`
    - `wrangler secret put OPENAI_API_KEY` (optional)
    - `wrangler secret put RESEND_API_KEY` (required only if `EMAIL_PROVIDER=resend` and you want real reset emails)
+   - `wrangler secret put FACEBOOK_APP_SECRET` (required only if you want Facebook social login)
+4. Set social provider vars in `wrangler.toml` or dashboard vars:
+   - `GOOGLE_CLIENT_ID` = same Google web client ID used by the frontend
+   - `ENTRA_CLIENT_ID` = same Microsoft app/client ID used by the frontend
+   - `ENTRA_TENANT_ID` = `common` or your tenant ID
+   - `FACEBOOK_APP_ID` = same Facebook app ID used by the frontend
 5. Set reset-email vars in `wrangler.toml` or dashboard vars:
    - `APP_NAME=Aerovanta`
    - `APP_BASE_URL=https://app.aerovanta.com`
@@ -102,7 +109,7 @@ These routes are implemented in the Worker now:
 7. `POST /api/v1/auth/password-reset/complete`
 8. `POST /api/v1/auth/change-password`
 
-Social login is still not migrated in the Worker path yet.
+9. `POST /api/v1/auth/social` (verified provider token flow)
 
 ### 3F. Manual smoke test after deploy
 
@@ -121,14 +128,14 @@ Social login is still not migrated in the Worker path yet.
 
 ## Current limitation of the no-billing path
 
-The Worker scaffold currently supports only the migrated auth routes plus health/readiness.
+The Worker now covers the main frontend contract, but persistent media storage still remains transient in the no-billing path.
 
 That means:
 
-1. Email auth can be deployed on Cloudflare now.
-2. D1-backed sessions can be deployed on Cloudflare now.
-3. Persistent image uploads are not part of the free no-billing path yet.
-4. Diagnosis/chat/community image flows still need dedicated Worker route migration before the whole app can run only on Cloudflare.
+1. Email and social auth can run on Cloudflare now.
+2. D1-backed sessions and main entity flows can run on Cloudflare now.
+3. Persistent image uploads are still not part of the free no-billing path.
+4. Password reset email delivery still needs a verified sender domain if you want real emails instead of debug links.
 
 ## Point 5: Rate limiting
 
@@ -148,4 +155,7 @@ Only go live when all are true:
 3. `/healthz` and `/readyz` are green.
 4. Secrets rotated and not present in repository history.
 5. Auth, diagnosis, planner, admin flows pass smoke tests.
+
+
+
 

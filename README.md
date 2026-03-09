@@ -1,4 +1,4 @@
-﻿# Aerovanta
+# Aerovanta
 
 Branding rollout checklist for repo rename, domains, and OAuth app names:
 
@@ -46,8 +46,9 @@ Vite proxies `/api` and `/uploads` to the API server by default.
   - `SESSION_COOKIE_SECURE=true`
   - strict `CORS_ORIGINS`
 - `ADMIN_BOOTSTRAP_PASSWORD` is optional and only used if the seeded admin account has no password yet.
-- Social login currently accepts provider profile payload in development mode (`ALLOW_SOCIAL_PROFILE_ONLY=true`).
-  - Disable this in production and enforce verified provider tokens.
+- Social login now verifies real provider tokens server-side on the Worker path.
+  - `ALLOW_SOCIAL_PROFILE_ONLY=true` keeps an unsafe profile-only fallback for local development only.
+  - Keep it `false` for staging and production.
 
 ## Production Step 1: Environment and Secrets
 
@@ -55,7 +56,11 @@ Vite proxies `/api` and `/uploads` to the API server by default.
 2. Set real values for:
    - `CORS_ORIGINS` (your exact frontend domain)
    - `ADMIN_EMAIL`
-   - `GEMINI_API_KEY` (and optional OAuth provider IDs)
+   - `GEMINI_API_KEY`
+   - `VITE_ENABLE_SOCIAL_LOGIN=true` if you want social buttons visible
+   - `VITE_GOOGLE_CLIENT_ID`, `VITE_ENTRA_CLIENT_ID`, `VITE_ENTRA_TENANT_ID`, `VITE_FACEBOOK_APP_ID`
+   - `GOOGLE_CLIENT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_TENANT_ID`, `FACEBOOK_APP_ID`
+   - `FACEBOOK_APP_SECRET` (secret only, never in frontend)
 3. Keep these production-safe flags:
    - `NODE_ENV=production`
    - `FORCE_HTTPS=true`
@@ -88,4 +93,7 @@ For real password reset delivery on the Worker path, configure `EMAIL_PROVIDER`,
 - `npm run api:check-config` - validate production hardening env/config
 - `npm run lint` - run ESLint
 - `npm run build` - build frontend
+
+
+
 

@@ -1,4 +1,4 @@
-﻿name = "aerovanta-api"
+name = "aerovanta-api"
 main = "src/index.js"
 compatibility_date = "2026-03-05"
 
@@ -6,7 +6,11 @@ compatibility_date = "2026-03-05"
 API_PREFIX = "/api/v1"
 CORS_ORIGINS = "http://localhost:5173,https://aerovanta-web.pages.dev,https://*.aerovanta-web.pages.dev"
 FORCE_HTTPS = "true"
-ALLOW_SOCIAL_PROFILE_ONLY = "false"
+ALLOW_SOCIAL_PROFILE_ONLY = "true"
+GOOGLE_CLIENT_ID = "9617483363-a541g6qkanohf54qr1h7lnofqouvb7n6.apps.googleusercontent.com"
+ENTRA_CLIENT_ID = "e62907f0-d4a3-4a4c-a053-5012ae0e2aa2"
+ENTRA_TENANT_ID = "common"
+FACEBOOK_APP_ID = "1780336486260915"
 EXPOSE_RESET_DEBUG_URL = "true"
 APP_BASE_URL = "https://aerovanta-web.pages.dev"
 APP_NAME = "Aerovanta"
@@ -26,6 +30,8 @@ REMEMBER_SESSION_DAYS = "30"
 binding = "DB"
 database_name = "aerovanta"
 database_id = "b431d1c0-f59e-4e0c-91e8-2f2166ad5aa0"
+
+
 
 
 

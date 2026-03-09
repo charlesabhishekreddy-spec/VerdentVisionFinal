@@ -1,8 +1,10 @@
-﻿import { writeAuthEvent } from "./audit.js";
+import { writeAuthEvent } from "./audit.js";
 import { sendPasswordResetEmail } from "./mailer.js";
+import { verifySocialIdentity } from "./social.js";
 const textEncoder = new TextEncoder();
 const MAX_PBKDF2_ITERATIONS = 100000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const SOCIAL_PROVIDER_VALUES = new Set(["google", "microsoft", "facebook"]);
 
 const safeParseJson = (value, fallback = null) => {
   try {
@@ -48,6 +50,19 @@ const constantTimeEqualHex = (left = "", right = "") => {
 
 export const normalizeEmail = (email = "") => String(email || "").trim().toLowerCase();
 export const isValidEmail = (email = "") => EMAIL_REGEX.test(normalizeEmail(email));
+
+const normalizeCrops = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((crop) => String(crop || "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((crop) => crop.trim())
+      .filter(Boolean);
+  }
+  return [];
+};
 
 export const parseCookies = (cookieHeader = "") => {
   const cookies = {};
@@ -118,7 +133,15 @@ const validatePassword = (password = "", email = "", minLength = 12) => {
 
 export const sanitizeUser = (user) => {
   if (!user || typeof user !== "object") return null;
-  const { password_hash, password_salt, password_iterations, ...safeUser } = user;
+  const {
+    password_hash,
+    password_salt,
+    password_iterations,
+    social_identities,
+    password_changed_at,
+    password_reset_at,
+    ...safeUser
+  } = user;
   return safeUser;
 };
 
@@ -136,6 +159,7 @@ const getPasswordMinLength = (env) => Number.parseInt(String(env.PASSWORD_MIN_LE
 const getRememberDays = (env) => Number.parseInt(String(env.REMEMBER_SESSION_DAYS || "30"), 10) || 30;
 const getSessionHours = (env) => Number.parseInt(String(env.DEFAULT_SESSION_HOURS || "8"), 10) || 8;
 const getAdminEmail = (env) => normalizeEmail(env.ADMIN_EMAIL || "");
+const allowSocialProfileOnly = (env) => String(env.ALLOW_SOCIAL_PROFILE_ONLY || "false").toLowerCase() === "true";
 const getResetTokenMinutes = (env) => Number.parseInt(String(env.RESET_TOKEN_MINUTES || "15"), 10) || 15;
 const shouldExposeResetDebugUrl = (env) => String(env.EXPOSE_RESET_DEBUG_URL || "false").toLowerCase() === "true";
 const maskEmail = (email = "") => {
@@ -322,6 +346,19 @@ const writeSession = async (env, session) => {
 const getUserByEmail = async (env, email) => {
   const row = await env.DB.prepare("SELECT payload_json FROM users WHERE email = ?1 LIMIT 1")
     .bind(normalizeEmail(email))
+    .first();
+  return row?.payload_json ? safeParseJson(row.payload_json, null) : null;
+};
+
+const getUserBySocialIdentity = async (env, provider, subject) => {
+  const normalizedProvider = String(provider || "").trim().toLowerCase();
+  const normalizedSubject = String(subject || "").trim();
+  if (!normalizedProvider || !normalizedSubject) return null;
+  const jsonPath = `$.social_identities.${normalizedProvider}.subject`;
+  const row = await env.DB.prepare(
+    `SELECT payload_json FROM users WHERE json_extract(payload_json, '${jsonPath}') = ?1 LIMIT 1`
+  )
+    .bind(normalizedSubject)
     .first();
   return row?.payload_json ? safeParseJson(row.payload_json, null) : null;
 };
@@ -516,6 +553,162 @@ export const registerWithEmail = async (request, env, payload = {}) => {
   };
 };
 
+export const signInWithSocial = async (request, env, payload = {}) => {
+  const provider = String(payload.provider || "").toLowerCase();
+  const remember = payload.remember !== false;
+
+  if (!SOCIAL_PROVIDER_VALUES.has(provider)) {
+    return { ok: false, status: 400, code: "invalid_provider", message: "Unsupported social provider." };
+  }
+
+  let verifiedIdentity;
+  try {
+    const hasProviderToken = Boolean(
+      String(payload.identity_token || payload.id_token || "").trim() || String(payload.access_token || "").trim()
+    );
+    if (hasProviderToken || !allowSocialProfileOnly(env)) {
+      verifiedIdentity = await verifySocialIdentity(payload, env);
+    } else {
+      const profile = payload?.profile && typeof payload.profile === "object" ? payload.profile : {};
+      const email = normalizeEmail(profile.email || "");
+      if (!isValidEmail(email)) {
+        return {
+          ok: false,
+          status: 400,
+          code: "invalid_email",
+          message: "Social provider did not return a valid email.",
+        };
+      }
+      verifiedIdentity = {
+        provider,
+        subject: email,
+        email,
+        name: String(profile.name || email.split("@")[0] || "User").trim(),
+        picture: String(profile.picture || "").trim(),
+        emailVerified: true,
+      };
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: Number.isFinite(error?.status) ? error.status : 500,
+      code: String(error?.code || "social_auth_failed"),
+      message: String(error?.message || "Social sign-in failed."),
+    };
+  }
+
+  const email = normalizeEmail(verifiedIdentity.email || "");
+  if (!isValidEmail(email)) {
+    return { ok: false, status: 400, code: "invalid_email", message: "Social provider did not return a valid email." };
+  }
+
+  const subject = String(verifiedIdentity.subject || email).trim();
+  const existingByProvider = await getUserBySocialIdentity(env, provider, subject);
+  const existingByEmail = await getUserByEmail(env, email);
+
+  if (existingByProvider?.id && existingByEmail?.id && existingByProvider.id !== existingByEmail.id) {
+    return {
+      ok: false,
+      status: 409,
+      code: "social_identity_conflict",
+      message: "This social account is already linked to another Aerovanta user.",
+    };
+  }
+
+  const existing = existingByProvider || existingByEmail;
+  if (String(existing?.account_status || "").toLowerCase() === "suspended") {
+    return { ok: false, status: 403, code: "account_suspended", message: "Account suspended. Contact an administrator." };
+  }
+
+  const existingIdentity = existing?.social_identities?.[provider];
+  if (existingIdentity?.subject && String(existingIdentity.subject) !== subject) {
+    return {
+      ok: false,
+      status: 409,
+      code: "social_identity_conflict",
+      message: "This social provider is already linked to a different identity.",
+    };
+  }
+
+  const linkedProviders = Array.from(
+    new Set([...(Array.isArray(existing?.linked_providers) ? existing.linked_providers : []), provider])
+  );
+  const updatedAt = nowIso();
+  const socialIdentities = {
+    ...(existing?.social_identities && typeof existing.social_identities === "object" ? existing.social_identities : {}),
+    [provider]: {
+      provider,
+      subject,
+      email,
+      email_verified: verifiedIdentity.emailVerified !== false,
+      linked_at: existingIdentity?.linked_at || updatedAt,
+      last_verified_at: updatedAt,
+      tenant_id: String(verifiedIdentity.tenantId || existingIdentity?.tenant_id || ""),
+    },
+  };
+  const user = await writeUser(env, {
+    ...existing,
+    id: existing?.id || crypto.randomUUID(),
+    full_name: String(verifiedIdentity.name || existing?.full_name || email.split("@")[0] || "User").trim(),
+    email,
+    role: existing?.role || (email === getAdminEmail(env) ? "admin" : "user"),
+    provider,
+    linked_providers: linkedProviders,
+    social_identities: socialIdentities,
+    avatar_url: verifiedIdentity.picture || existing?.avatar_url || "",
+    account_status: existing?.account_status || "active",
+    email_verified: verifiedIdentity.emailVerified !== false,
+    created_date: existing?.created_date || updatedAt,
+    updated_date: updatedAt,
+    last_login_date: updatedAt,
+  });
+
+  const sessionRecord = await buildSessionRecord(request, env, user, remember);
+  await writeSession(env, sessionRecord.session);
+
+  const headers = new Headers();
+  appendAuthCookies(headers, env, sessionRecord.token, sessionRecord.csrfToken, remember);
+  headers.set("x-csrf-token", sessionRecord.csrfToken);
+  await writeAuthEvent(env, "social_login_success", user.email, {
+    provider,
+    remember: Boolean(remember),
+    user_id: user.id,
+  });
+  return {
+    ok: true,
+    status: 200,
+    user: sanitizeUser(user),
+    headers,
+  };
+};
+export const updateProfile = async (env, context, payload = {}) => {
+  const { email, fullName, full_name, primary_crops, ...safeUpdateData } = payload || {};
+  const currentEmail = normalizeEmail(context?.user?.email || "");
+  if (email && normalizeEmail(email) !== currentEmail) {
+    return { ok: false, status: 400, code: "email_update_denied", message: "Email updates require administrator assistance." };
+  }
+
+  const existing = (await getUserById(env, context?.user?.id || "")) || context?.user || {};
+  const updatedUser = await writeUser(env, {
+    ...existing,
+    ...safeUpdateData,
+    email: currentEmail,
+    full_name: full_name || fullName || existing.full_name || "Farmer",
+    role: existing.role || "user",
+    provider: existing.provider || "email",
+    primary_crops: Object.prototype.hasOwnProperty.call(payload || {}, "primary_crops")
+      ? normalizeCrops(primary_crops)
+      : existing.primary_crops,
+    updated_date: nowIso(),
+  });
+
+  await writeAuthEvent(env, "profile_updated", updatedUser.email);
+  return {
+    ok: true,
+    status: 200,
+    user: sanitizeUser(updatedUser),
+  };
+};
 const getUserById = async (env, userId) => {
   const row = await env.DB.prepare("SELECT payload_json FROM users WHERE id = ?1 LIMIT 1")
     .bind(String(userId || ""))
@@ -854,5 +1047,12 @@ export const logoutOtherSessions = async (env, context, requestedEmail = "") => 
   await writeAuthEvent(env, "logout_other_devices", email, { by: context.user.email });
   return { ok: true, status: 200, data: { success: true } };
 };
+
+
+
+
+
+
+
 
 

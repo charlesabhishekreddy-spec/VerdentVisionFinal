@@ -239,16 +239,16 @@ async function runMicrosoftPopup({ allowRecovery = true } = {}) {
     });
 
     const claims = result.idTokenClaims || {};
-    const email = result.account?.username || extractEmailFromClaims(claims);
-    if (!email) throw new Error("Microsoft did not return an email address.");
+    const emailHint = result.account?.username || extractEmailFromClaims(claims);
+    if (!result?.idToken) throw new Error("Microsoft did not return an identity token.");
+    if (!emailHint && !result.account?.name && !claims?.name) {
+      throw new Error("Microsoft did not return enough account information.");
+    }
 
     return {
       provider: "microsoft",
-      profile: {
-        name: result.account?.name || claims.name || email,
-        email,
-        picture: "",
-      },
+      identity_token: result.idToken,
+      access_token: result.accessToken || "",
     };
   } catch (error) {
     const code = String(error?.errorCode || error?.code || "").toLowerCase();
@@ -260,7 +260,6 @@ async function runMicrosoftPopup({ allowRecovery = true } = {}) {
     throw mapMicrosoftAuthError(error);
   }
 }
-
 export function getSocialProviderConfigs() {
   return Object.values(PROVIDERS).map((provider) => ({
     key: provider.key,
@@ -279,34 +278,25 @@ export async function loginWithGoogle() {
         const tokenClient = window.google.accounts.oauth2.initTokenClient({
           client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
           scope: "openid email profile",
-          callback: async (tokenResponse) => {
-            try {
-              if (tokenResponse?.error) {
-                if (tokenResponse.error === "popup_closed_by_user") {
-                  throw new Error("Google sign-in was canceled.");
-                }
-                throw new Error(`Google sign-in failed: ${tokenResponse.error}`);
+          callback: (tokenResponse) => {
+            if (tokenResponse?.error) {
+              if (tokenResponse.error === "popup_closed_by_user") {
+                reject(new Error("Google sign-in was canceled."));
+                return;
               }
-
-              const response = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-              });
-              if (!response.ok) throw new Error("Unable to retrieve Google profile.");
-
-              const profile = await response.json();
-              if (!profile?.email) throw new Error("Google did not return an email address.");
-
-              resolve({
-                provider: "google",
-                profile: {
-                  name: profile.name || profile.email,
-                  email: profile.email,
-                  picture: profile.picture || "",
-                },
-              });
-            } catch (error) {
-              reject(error);
+              reject(new Error(`Google sign-in failed: ${tokenResponse.error}`));
+              return;
             }
+
+            if (!tokenResponse?.access_token) {
+              reject(new Error("Google did not return an access token."));
+              return;
+            }
+
+            resolve({
+              provider: "google",
+              access_token: tokenResponse.access_token,
+            });
           },
         });
 
@@ -319,7 +309,6 @@ export async function loginWithGoogle() {
     "Google sign-in timed out."
   );
 }
-
 export async function loginWithMicrosoft() {
   if (microsoftLoginPromise) return microsoftLoginPromise;
 
@@ -349,24 +338,14 @@ export async function loginWithFacebook() {
             return;
           }
 
-          window.FB.api("/me", { fields: "name,email,picture" }, (userInfo) => {
-            if (!userInfo || userInfo.error) {
-              reject(new Error("Failed to retrieve Facebook profile."));
-              return;
-            }
-            if (!userInfo.email) {
-              reject(new Error("Facebook did not return an email address."));
-              return;
-            }
+          if (!response.authResponse.accessToken) {
+            reject(new Error("Facebook did not return an access token."));
+            return;
+          }
 
-            resolve({
-              provider: "facebook",
-              profile: {
-                name: userInfo.name || userInfo.email,
-                email: userInfo.email,
-                picture: userInfo.picture?.data?.url || "",
-              },
-            });
+          resolve({
+            provider: "facebook",
+            access_token: response.authResponse.accessToken,
           });
         },
         { scope: "public_profile,email", auth_type: "rerequest" }
@@ -376,7 +355,6 @@ export async function loginWithFacebook() {
     "Facebook sign-in timed out."
   );
 }
-
 export async function loginWithSocial(provider) {
   const normalizedProvider = String(provider || "").toLowerCase();
   if (normalizedProvider === "google") return loginWithGoogle();
@@ -384,4 +362,7 @@ export async function loginWithSocial(provider) {
   if (normalizedProvider === "facebook") return loginWithFacebook();
   throw new Error("Unsupported social provider.");
 }
+
+
+
 
