@@ -1,4 +1,4 @@
-# Cloudflare Deployment Checklist (Point-by-Point)
+﻿# Cloudflare Deployment Checklist (Point-by-Point)
 
 This checklist targets a no-billing baseline using Cloudflare services.
 
@@ -59,6 +59,13 @@ Starter scaffold included:
 3. Add secrets:
    - `wrangler secret put GEMINI_API_KEY`
    - `wrangler secret put OPENAI_API_KEY` (optional)
+   - `wrangler secret put RESEND_API_KEY` (required only if `EMAIL_PROVIDER=resend` and you want real reset emails)
+5. Set reset-email vars in `wrangler.toml` or dashboard vars:
+   - `APP_NAME=Aerovanta`
+   - `APP_BASE_URL=https://app.aerovanta.com`
+   - `EMAIL_PROVIDER=resend`
+   - `RESET_EMAIL_FROM=security@aerovanta.com`
+   - `RESET_EMAIL_REPLY_TO=`
 4. Deploy:
    - `cd cloudflare/worker`
    - `wrangler deploy`
@@ -90,6 +97,10 @@ These routes are implemented in the Worker now:
 2. `POST /api/v1/auth/login/email`
 3. `POST /api/v1/auth/register/email`
 4. `POST /api/v1/auth/logout`
+5. `POST /api/v1/auth/password-reset/request`
+6. `GET /api/v1/auth/password-reset/validate`
+7. `POST /api/v1/auth/password-reset/complete`
+8. `POST /api/v1/auth/change-password`
 
 Social login is still not migrated in the Worker path yet.
 

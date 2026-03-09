@@ -1,4 +1,4 @@
-# Aerovanta
+﻿# Aerovanta
 
 Branding rollout checklist for repo rename, domains, and OAuth app names:
 
@@ -78,6 +78,7 @@ For a cost-free deployment baseline, use Cloudflare:
 3. Optional later: R2 only if you want persistent uploaded image storage and are willing to enable Cloudflare billing
 
 See detailed checklist: `CLOUD_DEPLOYMENT_CLOUDFLARE.md`
+For real password reset delivery on the Worker path, configure `EMAIL_PROVIDER`, `APP_BASE_URL`, `RESET_EMAIL_FROM`, and the `RESEND_API_KEY` secret.
 
 ## Scripts
 

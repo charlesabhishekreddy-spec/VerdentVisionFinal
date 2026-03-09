@@ -1,4 +1,5 @@
 ﻿import { writeAuthEvent } from "./audit.js";
+import { sendPasswordResetEmail } from "./mailer.js";
 const textEncoder = new TextEncoder();
 const MAX_PBKDF2_ITERATIONS = 100000;
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -653,12 +654,24 @@ export const requestPasswordReset = async (env, payload = {}) => {
     used_at: null,
     updated_date: createdDate,
   };
-
   await env.DB.prepare("DELETE FROM password_reset_tokens WHERE user_id = ?1 AND (used_at IS NULL OR used_at = '')")
     .bind(user.id)
     .run();
   await writePasswordResetToken(env, resetRecord);
-  await writeAuthEvent(env, "password_reset_requested", email, { status: "issued" });
+
+  const delivery = shouldExposeResetDebugUrl(env)
+    ? { sent: false, provider: "debug", reason: "debug_link" }
+    : await sendPasswordResetEmail(env, {
+        toEmail: user.email,
+        recipientName: user.full_name || user.email,
+        token: rawToken,
+      });
+
+  await writeAuthEvent(env, "password_reset_requested", email, {
+    status: "issued",
+    delivery: delivery.sent ? "sent" : delivery.reason || "not_configured",
+    provider: delivery.provider || "none",
+  });
 
   const data = {
     success: true,
@@ -667,6 +680,7 @@ export const requestPasswordReset = async (env, payload = {}) => {
   if (shouldExposeResetDebugUrl(env)) {
     data.debug_reset_url = `/reset-password?token=${encodeURIComponent(rawToken)}`;
   }
+  return { ok: true, status: 200, data };
   return { ok: true, status: 200, data };
 };
 

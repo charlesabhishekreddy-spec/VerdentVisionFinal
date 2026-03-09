@@ -1,4 +1,4 @@
-name = "aerovanta-api"
+﻿name = "aerovanta-api"
 main = "src/index.js"
 compatibility_date = "2026-03-05"
 
@@ -8,6 +8,11 @@ CORS_ORIGINS = "http://localhost:5173,https://aerovanta-web.pages.dev,https://*.
 FORCE_HTTPS = "true"
 ALLOW_SOCIAL_PROFILE_ONLY = "false"
 EXPOSE_RESET_DEBUG_URL = "false"
+APP_NAME = "Aerovanta"
+APP_BASE_URL = "https://app.aerovanta.com"
+EMAIL_PROVIDER = "resend"
+RESET_EMAIL_FROM = "security@aerovanta.com"
+RESET_EMAIL_REPLY_TO = ""
 ADMIN_EMAIL = "admin@aerovanta.com"
 SESSION_COOKIE_NAME = "vv_session"
 CSRF_COOKIE_NAME = "vv_csrf"
