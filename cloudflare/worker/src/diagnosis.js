@@ -8,6 +8,13 @@ const DIAGNOSIS_PIPELINE_VERSION = "diagnosis-v3-gemini-edge";
 
 const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
 const normalizeText = (value) => String(value ?? "").trim().toLowerCase();
+const normalizeJsonText = (value) =>
+  String(value || "")
+    .replace(/\u201c|\u201d/g, '"')
+    .replace(/\u2018|\u2019/g, "'")
+    .replace(/^\s*json\s*/i, "")
+    .replace(/,\s*([}\]])/g, "$1")
+    .trim();
 const parseJsonSafe = (value) => {
   try {
     return JSON.parse(String(value || ""));
@@ -72,7 +79,7 @@ const parseDataUrl = (value) => {
   if (!match) return null;
   const mime = match[1].toLowerCase();
   const base64 = String(match[2] || "").replace(/\s+/g, "");
-  const padding = (base64.match(/=+$/)?.[0]?.length || 0);
+  const padding = base64.match(/=+$/)?.[0]?.length || 0;
   const bytes = Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
   if (!bytes) return null;
   if (bytes > MAX_IMAGE_BYTES) {
@@ -110,7 +117,7 @@ const parseMessageText = (content) => {
 
 const parseModelJson = (value) => {
   if (value && typeof value === "object" && !Array.isArray(value)) return value;
-  let text = String(value || "").trim();
+  let text = normalizeJsonText(value);
   if (!text) return null;
   text = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
   const direct = parseJsonSafe(text);
@@ -118,10 +125,88 @@ const parseModelJson = (value) => {
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
   if (start !== -1 && end > start) {
-    const sliced = parseJsonSafe(text.slice(start, end + 1));
+    const sliced = parseJsonSafe(normalizeJsonText(text.slice(start, end + 1)));
     if (sliced && typeof sliced === "object" && !Array.isArray(sliced)) return sliced;
   }
   return null;
+};
+
+const escapeRegex = (value) => String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const extractStringField = (text, labels = []) => {
+  for (const label of labels) {
+    const normalizedLabel = escapeRegex(label).replace(/_/g, "[_\\s]?");
+    const pattern = new RegExp(
+      `(?:["']?${normalizedLabel}["']?)\\s*[:=-]\\s*(?:"([^"]+)"|'([^']+)'|([^,\\n}\\]]+))`,
+      "i"
+    );
+    const match = text.match(pattern);
+    const value = String(match?.[1] || match?.[2] || match?.[3] || "").trim();
+    if (value) return value;
+  }
+  return "";
+};
+
+const extractNumberField = (text, labels = []) => {
+  for (const label of labels) {
+    const normalizedLabel = escapeRegex(label).replace(/_/g, "[_\\s]?");
+    const pattern = new RegExp(`(?:["']?${normalizedLabel}["']?)\\s*[:=-]\\s*(-?\\d+(?:\\.\\d+)?)`, "i");
+    const match = text.match(pattern);
+    if (match?.[1] != null) return Number.parseFloat(match[1]);
+  }
+  return null;
+};
+
+const extractBooleanField = (text, labels = []) => {
+  for (const label of labels) {
+    const normalizedLabel = escapeRegex(label).replace(/_/g, "[_\\s]?");
+    const pattern = new RegExp(`(?:["']?${normalizedLabel}["']?)\\s*[:=-]\\s*(true|false)`, "i");
+    const match = text.match(pattern);
+    if (match?.[1]) return match[1].toLowerCase() === "true";
+  }
+  return null;
+};
+
+const extractArrayField = (text, labels = []) => {
+  for (const label of labels) {
+    const normalizedLabel = escapeRegex(label).replace(/_/g, "[_\\s]?");
+    const jsonArrayPattern = new RegExp(`(?:["']?${normalizedLabel}["']?)\\s*[:=-]\\s*(\\[[\\s\\S]*?\\])`, "i");
+    const jsonArrayMatch = text.match(jsonArrayPattern);
+    if (jsonArrayMatch?.[1]) {
+      const parsed = parseJsonSafe(normalizeJsonText(jsonArrayMatch[1]));
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item ?? "").trim()).filter(Boolean).slice(0, 12);
+      }
+    }
+  }
+  return [];
+};
+
+const extractDiagnosisFromText = (value) => {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  const candidate = {
+    plantName: extractStringField(text, ["plantName", "plant_name", "plant", "Plant Name"]),
+    disease: extractStringField(text, ["disease", "diseaseName", "Disease Diagnosis"]),
+    diseaseType: extractStringField(text, ["diseaseType", "disease_type", "Disease Type"]),
+    infectionLevel: extractNumberField(text, ["infectionLevel", "infection_level", "Infection Level"]),
+    isPlant: extractBooleanField(text, ["isPlant", "is_plant"]),
+    confidence: extractNumberField(text, ["confidence", "confidenceScore", "confidence_score"]),
+    symptoms: extractArrayField(text, ["symptoms", "visibleSymptoms", "keySymptoms"]),
+    diagnosisNotes: extractStringField(text, ["diagnosisNotes", "diagnosis_notes", "analysis_notes", "Diagnosis Notes"]),
+    probableCauses: extractArrayField(text, ["probableCauses", "probable_causes"]),
+    immediateActions: extractArrayField(text, ["immediateActions", "immediate_actions"]),
+  };
+
+  const hasCoreFields =
+    Boolean(candidate.plantName) ||
+    Boolean(candidate.disease) ||
+    Number.isFinite(candidate.infectionLevel) ||
+    candidate.isPlant != null;
+
+  if (!hasCoreFields) return null;
+  return candidate;
 };
 
 const deriveSeverity = (infectionLevel) => {
@@ -349,7 +434,7 @@ const buildOpenAiResponseSchema = () => ({
 
 const makeOpenAiCallError = (status, detailText = "") => {
   const details = parseOpenAiError(detailText);
-  if (status === 401 || status === 403 || isGeminiAuthError(details)) {
+  if (status === 401 || status === 403) {
     return createHttpError(502, details.message || "Diagnosis AI authentication failed. Check OPENAI_API_KEY and model access.", "ai_auth_failed");
   }
   if (status === 429) {
@@ -366,7 +451,7 @@ const makeOpenAiCallError = (status, detailText = "") => {
 
 const makeGeminiCallError = (status, detailText = "") => {
   const details = parseGeminiError(detailText);
-  if (status === 401 || status === 403 || isGeminiAuthError(details)) {
+  if (status === 401 || status === 403) {
     return createHttpError(502, details.message || "Gemini authentication failed. Check GEMINI_API_KEY and model access.", "ai_auth_failed");
   }
   if (status === 429 || details.status === "RESOURCE_EXHAUSTED") {
@@ -436,7 +521,7 @@ const callOpenAiDiagnosis = async ({ image, plantReference, env }) => {
 
       const json = await response.json();
       const messageText = parseMessageText(json?.choices?.[0]?.message?.content);
-      const parsed = parseModelJson(messageText);
+      const parsed = parseModelJson(messageText) || extractDiagnosisFromText(messageText);
       if (!parsed) {
         lastError = createHttpError(502, "Diagnosis model returned invalid JSON.", "ai_invalid_response");
         continue;
@@ -512,7 +597,7 @@ const callGeminiDiagnosis = async ({ image, plantReference, env }) => {
     }
 
     const messageText = parseMessageText(json?.candidates?.[0]?.content?.parts);
-    const parsed = parseModelJson(messageText);
+    const parsed = parseModelJson(messageText) || extractDiagnosisFromText(messageText);
     if (!parsed) {
       throw createHttpError(502, "Gemini returned invalid JSON.", "ai_invalid_response");
     }
@@ -609,4 +694,3 @@ export const diagnosePlantImage = async ({ fileUrl, env }) => {
     confidence_threshold: MIN_RELIABLE_CONFIDENCE,
   };
 };
-
